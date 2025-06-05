@@ -1,4 +1,4 @@
-// server.ts
+// backend/src/server.ts - Add the saved recipes route
 import cors from "cors";
 import dotenv from "dotenv";
 import { Server } from "socket.io";
@@ -11,6 +11,8 @@ import authRoutes from "./routes/auth";
 import roleRoutes from "./routes/role";
 import postRoutes from "./routes/post";
 import userRoutes from "./routes/user";
+import recipeRoutes from "./routes/recipe";
+import savedRecipeRoutes from "./routes/saveRecipe"; // Add this import
 
 // DB
 import { connectDB } from "./config/db";
@@ -42,7 +44,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/users", userRoutes);
-
+app.use("/api/recipes", recipeRoutes);
+app.use("/api/saved-recipes", savedRecipeRoutes); // Add this route
 
 // Test Route
 app.get("/", (req: Request, res: Response) => {
@@ -100,7 +103,6 @@ io.on("connection", (socket) => {
     });
   });
 });
-
 
 // Start Server
 server.listen(port, () => {

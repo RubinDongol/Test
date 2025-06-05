@@ -109,6 +109,26 @@ export const connectDB = async (): Promise<void> => {
         UNIQUE (follower_id, following_id)
       );
     `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS saved_recipes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        recipe_id VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        image TEXT,
+        description TEXT,
+        cooking_time INTEGER DEFAULT 0,
+        servings INTEGER DEFAULT 1,
+        difficulty VARCHAR(50) DEFAULT 'Medium',
+        rating DECIMAL(3,2) DEFAULT 0.0,
+        chef VARCHAR(255),
+        ingredients TEXT,
+        directions TEXT,
+        tags TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, recipe_id)
+      );
+    `);
     console.log("Follows table ready");
 
     client.release();
