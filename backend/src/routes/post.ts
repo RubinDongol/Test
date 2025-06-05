@@ -1,6 +1,16 @@
 import { Router } from "express";
 import { protect } from "../middleware/authMiddleware";
-import { createPost, getAllPosts, toggleLikePost, addComment, getCommentsByPostId, toggleBookmarkPost, getBookmarkedPosts, getFollowingPosts } from "../controllers/postController";
+import {
+  createPost,
+  getAllPosts,
+  toggleLikePost,
+  addComment,
+  getCommentsByPostId,
+  toggleBookmarkPost,
+  getBookmarkedPosts,
+  getFollowingPosts,
+  deletePost,
+} from "../controllers/postController";
 
 const router = Router();
 
@@ -14,7 +24,7 @@ router.get("/", protect, getAllPosts);
 router.post("/:id/like", protect, toggleLikePost);
 
 // Protected: Add comment to a post
-router.post("/:id/comment", protect, addComment); // - Add comment to a post    
+router.post("/:id/comment", protect, addComment); // - Add comment to a post
 router.get("/:id/comments", getCommentsByPostId); // - Get all comments by post ID
 
 // Protected: Bookmark or unbookmark a post
@@ -25,5 +35,8 @@ router.get("/bookmarked", protect, getBookmarkedPosts);
 
 // Protected: Get all posts from followed users
 router.get("/following", protect, getFollowingPosts);
+
+// delete a post
+router.delete("/:id", protect, deletePost);
 
 export default router;

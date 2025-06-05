@@ -29,9 +29,9 @@ export const getAllPosts = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
       `
-      SELECT 
-        p.*, 
-        u.full_name, 
+      SELECT
+        p.*,
+        u.full_name,
         u.photo,
         COALESCE(l.like_count, 0)::int AS like_count,
         COALESCE(c.comment_count, 0)::int AS comment_count,
@@ -40,7 +40,8 @@ export const getAllPosts = async (req: Request, res: Response) => {
         ) AS is_bookmarked,
         EXISTS (
           SELECT 1 FROM likes l WHERE l.post_id = p.id AND l.user_id = $1
-        ) AS is_liked
+        ) AS is_liked,
+        (p.user_id = $1) AS is_owner
       FROM posts p
       JOIN users u ON p.user_id = u.id
       LEFT JOIN (
@@ -65,8 +66,6 @@ export const getAllPosts = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const toggleLikePost = async (req: Request, res: Response) => {
   const user = (req as any).user;
   const postId = parseInt(req.params.id, 10);
@@ -90,10 +89,10 @@ export const toggleLikePost = async (req: Request, res: Response) => {
       return res.status(200).json({ liked: false, message: "Post unliked" });
     } else {
       // Not liked → like it
-      await pool.query(
-        "INSERT INTO likes (user_id, post_id) VALUES ($1, $2)",
-        [user.id, postId]
-      );
+      await pool.query("INSERT INTO likes (user_id, post_id) VALUES ($1, $2)", [
+        user.id,
+        postId,
+      ]);
       return res.status(200).json({ liked: true, message: "Post liked" });
     }
   } catch (err) {
@@ -168,14 +167,18 @@ export const toggleBookmarkPost = async (req: Request, res: Response) => {
         "DELETE FROM bookmarks WHERE user_id = $1 AND post_id = $2",
         [user.id, postId]
       );
-      return res.status(200).json({ bookmarked: false, message: "Post unbookmarked" });
+      return res
+        .status(200)
+        .json({ bookmarked: false, message: "Post unbookmarked" });
     } else {
       // Bookmark it
       await pool.query(
         "INSERT INTO bookmarks (user_id, post_id) VALUES ($1, $2)",
         [user.id, postId]
       );
-      return res.status(200).json({ bookmarked: true, message: "Post bookmarked" });
+      return res
+        .status(200)
+        .json({ bookmarked: true, message: "Post bookmarked" });
     }
   } catch (err) {
     console.error(err);
@@ -269,5 +272,41 @@ export const getFollowingPosts = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("getFollowingPosts error:", err);
     res.status(500).json({ message: "Failed to fetch following posts" });
+  }
+};
+
+// @desc Delete a post (only if it belongs to the user)
+export const deletePost = async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const postId = parseInt(req.params.id, 10);
+
+  if (!postId) {
+    return res.status(400).json({ message: "Invalid post ID" });
+  }
+
+  try {
+    // Check if post belongs to the logged-in user
+    const result = await pool.query(
+      `SELECT * FROM posts WHERE id = $1 AND user_id = $2`,
+      [postId, user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(403)
+        .json({ message: "You are not allowed to delete this post" });
+    }
+
+    // Delete related data from dependent tables
+    await pool.query(`DELETE FROM likes WHERE post_id = $1`, [postId]);
+    await pool.query(`DELETE FROM comments WHERE post_id = $1`, [postId]);
+    await pool.query(`DELETE FROM bookmarks WHERE post_id = $1`, [postId]);
+
+    // Delete the post itself
+    await pool.query(`DELETE FROM posts WHERE id = $1`, [postId]);
+
+    res.status(200).json({ message: "Post deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to delete post" });
   }
 };
