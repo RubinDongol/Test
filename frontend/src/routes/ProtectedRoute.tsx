@@ -14,7 +14,6 @@ const ProtectedRoute = () => {
       dispatch(setErrorMessage(''));
     }
   }, [errorMessage]);
-
   return accessToken ? <Outlet /> : <Navigate to="/login" replace />;
 };
 

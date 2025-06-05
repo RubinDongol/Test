@@ -5,10 +5,13 @@ import { useState } from 'react';
 import { AppWrapper } from '../../components/layouts';
 import { ClassCard } from '../../components/classes';
 import AddClassModal from '../../components/classes/AddClassModal.tsx';
+import { useAppSelector } from '../../redux/hook.ts';
 
 const Classes = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { user } = useAppSelector(state => state.auth);
 
   // Mock function to check if user is a chef
   const isChef = true; // This should come from your auth state/user role
@@ -52,7 +55,7 @@ const Classes = () => {
                 chefs. Fully Interactive!
               </Typography>
             </div>
-            {isChef && (
+            {user.role_id === 3 && isChef && (
               <Button
                 type="primary"
                 icon={<PlusOutlined />}

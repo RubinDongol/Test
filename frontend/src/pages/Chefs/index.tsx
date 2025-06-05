@@ -5,12 +5,15 @@ import { useState } from 'react';
 import { AppWrapper } from '../../components/layouts';
 import { RecipeCard } from '../../components/recipes';
 import { ChefCard } from '../../components/chefs';
+import { useAppSelector } from '../../redux/hook';
 import AddRecipeModal from '../../components/recipes/AddRecipeModal';
 import { PREMIUM_RECIPEDATA, RECIPEDATA } from '../../utils/data';
 
 const Chefs = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { user } = useAppSelector(state => state.auth);
 
   // Mock function to check if user is a chef
   const isChef = true; // This should come from your auth state/user role
@@ -49,7 +52,7 @@ const Chefs = () => {
               <Typography className="!text-[32px]">
                 Chefs & Their Recipes
               </Typography>
-              {isChef && (
+              {user.role_id === 3 && isChef && (
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
