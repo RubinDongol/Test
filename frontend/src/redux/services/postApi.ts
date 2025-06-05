@@ -16,7 +16,12 @@ export const postApi = createApi({
         method: API_Methods.POST,
         body: params,
       }),
-      invalidatesTags: ['Post'],
+      invalidatesTags: [
+        'Post',
+        'User',
+        { type: 'User', id: 'LIST' },
+        { type: 'User', id: 'CURRENT' },
+      ],
     }),
 
     // Get all posts (For You feed)
@@ -55,7 +60,12 @@ export const postApi = createApi({
         url: `posts/${postId}/like`,
         method: API_Methods.POST,
       }),
-      invalidatesTags: ['Post'],
+      invalidatesTags: (result, error, postId) => [
+        'Post',
+        'User',
+        { type: 'User', id: 'LIST' },
+        { type: 'User', id: 'CURRENT' },
+      ],
     }),
 
     // Toggle bookmark on a post
@@ -67,7 +77,12 @@ export const postApi = createApi({
         url: `posts/${postId}/bookmark`,
         method: API_Methods.POST,
       }),
-      invalidatesTags: ['Post'],
+      invalidatesTags: (result, error, postId) => [
+        'Post',
+        'User',
+        { type: 'User', id: 'LIST' },
+        { type: 'User', id: 'CURRENT' },
+      ],
     }),
 
     // Add comment to a post
@@ -77,7 +92,13 @@ export const postApi = createApi({
         method: API_Methods.POST,
         body: { text },
       }),
-      invalidatesTags: ['Comment', 'Post'],
+      invalidatesTags: (result, error, { postId }) => [
+        'Comment',
+        'Post',
+        'User',
+        { type: 'User', id: 'LIST' },
+        { type: 'User', id: 'CURRENT' },
+      ],
     }),
 
     // Get comments for a post
@@ -95,7 +116,27 @@ export const postApi = createApi({
         url: `posts/${postId}`,
         method: API_Methods.DELETE,
       }),
-      invalidatesTags: ['Post', 'User'],
+      invalidatesTags: (result, error, postId) => [
+        'Post',
+        'User',
+        { type: 'User', id: 'LIST' },
+        { type: 'User', id: 'CURRENT' },
+      ],
+      async onQueryStarted(postId, { dispatch, queryFulfilled }) {
+        // Optimistically update the cache
+        const patchResult = dispatch(
+          postApi.util.updateQueryData('getAllPosts', undefined, draft => {
+            return draft.filter(post => post.id !== postId);
+          }),
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          // If the mutation fails, undo the optimistic update
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });
@@ -123,7 +164,7 @@ export interface IPost {
   comment_count: number;
   is_bookmarked: boolean;
   is_liked: boolean;
-  is_owner: boolean; // Added this field
+  is_owner: boolean;
 }
 
 export interface IComment {

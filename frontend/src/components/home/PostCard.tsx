@@ -77,6 +77,12 @@ const PostCard = ({
     try {
       await deletePost(data.id).unwrap();
       notification.success({ message: 'Post deleted successfully!' });
+
+      // Force refetch of user profile if we're on profile page
+      if (window.location.pathname === '/profile') {
+        // This will trigger a refetch of the user profile
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error deleting post:', error);
       notification.error({ message: 'Failed to delete post' });
@@ -98,6 +104,7 @@ const PostCard = ({
       <div className="flex items-center justify-between">
         <UserNameWithIcon
           userName={locationUser || data.full_name}
+          userId={data.user_id}
           disabled={hideReportBtn}
         />
         <Typography className="!text-sm text-gray-500">
@@ -187,7 +194,7 @@ const PostCard = ({
                 disabled={isDeletingPost}>
                 <DeleteOutlined className="w-5 h-5" />
                 <Typography className="!text-sm text-red-500">
-                  {isDeletingPost ? 'Deleting...' : 'Delete'}
+                  {isDeletingPost ? 'Deleting...' : ''}
                 </Typography>
               </button>
             </Popconfirm>

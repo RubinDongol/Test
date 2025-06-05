@@ -27,13 +27,29 @@ export const userApi = createApi({
       invalidatesTags: ['Follow'],
     }),
 
-    // Get user profile
+    // Get current user profile
     getUserProfile: builder.query<IUserProfile, void>({
       query: () => ({
         url: 'auth/profile',
         method: API_Methods.GET,
       }),
-      providesTags: ['User'],
+      providesTags: result => [
+        'User',
+        { type: 'User', id: 'CURRENT' },
+        ...(result ? [{ type: 'User' as const, id: result.id }] : []),
+      ],
+    }),
+
+    // Get specific user profile by ID
+    getUserProfileById: builder.query<IUserProfile, number>({
+      query: userId => ({
+        url: `auth/profile/${userId}`,
+        method: API_Methods.GET,
+      }),
+      providesTags: (result, error, userId) => [
+        { type: 'User', id: userId },
+        { type: 'User', id: 'LIST' },
+      ],
     }),
 
     // Update user profile
@@ -52,6 +68,7 @@ export const {
   useFollowUserMutation,
   useUnfollowUserMutation,
   useGetUserProfileQuery,
+  useGetUserProfileByIdQuery, // Add this export
   useUpdateProfileMutation,
 } = userApi;
 

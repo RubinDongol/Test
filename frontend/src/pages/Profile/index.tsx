@@ -5,22 +5,44 @@ import { useState, useEffect } from 'react';
 import { handleOpenPicker } from '../../utils/helper';
 import TextArea from 'antd/es/input/TextArea';
 import { PostCard } from '../../components/home';
-import { useAppSelector } from '../../redux/hook';
+import { useAppSelector, useAppDispatch } from '../../redux/hook';
 import {
   useGetUserProfileQuery,
   useUpdateProfileMutation,
+  userApi,
 } from '../../redux/services/userApi';
 import { UserOutlined } from '@ant-design/icons';
-// import { useDeletePostMutation } from '../../redux/services/postApi';
+import { useLocation } from 'react-router-dom';
 
 const Profile = () => {
   const [imageUrl, setImageUrl] = useState<string>();
   const [isEditable, setEditable] = useState(false);
   const [bioText, setBioText] = useState('');
+  const dispatch = useAppDispatch();
+  const location = useLocation();
 
   const { user } = useAppSelector(s => s.auth);
-  const { data: profileData, isLoading } = useGetUserProfileQuery();
+  const { data: profileData, isLoading, refetch } = useGetUserProfileQuery();
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+
+  // Refetch profile data when navigating to this page
+  useEffect(() => {
+    refetch();
+  }, [location.pathname, refetch]);
+
+  // Listen for post actions and refetch
+  useEffect(() => {
+    const handleStorageChange = () => {
+      refetch();
+    };
+
+    // Listen for custom events that indicate post changes
+    window.addEventListener('postUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('postUpdated', handleStorageChange);
+    };
+  }, [refetch]);
 
   useEffect(() => {
     if (profileData) {
@@ -36,10 +58,6 @@ const Profile = () => {
     if (imageFile) {
       const blobImageUrl = URL.createObjectURL(imageFile);
       setImageUrl(blobImageUrl);
-
-      // Here you would typically upload the image to your server
-      // and get back a URL to save in the profile
-      // For now, we'll just use the blob URL
     }
   };
 
@@ -74,6 +92,8 @@ const Profile = () => {
   const transformedPosts =
     profileData?.posts?.map(post => ({
       ...post,
+      full_name: displayData.full_name,
+      photo: displayData.photo,
       is_owner: true, // Since this is the user's profile, they own all posts here
     })) || [];
 
@@ -146,13 +166,60 @@ const Profile = () => {
         ) : (
           <div className="flex-1">
             {transformedPosts.map(post => (
-              <PostCard key={post.id} data={post} hideReportBtn />
+              <EnhancedPostCard
+                key={post.id}
+                data={post}
+                onUpdate={refetch}
+                hideReportBtn
+              />
             ))}
           </div>
         )}
       </div>
     </AppWrapper>
   );
+};
+
+// Enhanced PostCard that triggers refetch on actions
+const EnhancedPostCard = ({
+  data,
+  onUpdate,
+  hideReportBtn,
+}: {
+  data: any;
+  onUpdate: () => void;
+  hideReportBtn?: boolean;
+}) => {
+  const [localData, setLocalData] = useState(data);
+
+  // Update local data when parent data changes
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
+
+  // Create enhanced data with update callbacks
+  const enhancedData = {
+    ...localData,
+    onLike: () => {
+      onUpdate();
+      // Dispatch custom event for cross-component communication
+      window.dispatchEvent(new CustomEvent('postUpdated'));
+    },
+    onBookmark: () => {
+      onUpdate();
+      window.dispatchEvent(new CustomEvent('postUpdated'));
+    },
+    onComment: () => {
+      onUpdate();
+      window.dispatchEvent(new CustomEvent('postUpdated'));
+    },
+    onDelete: () => {
+      onUpdate();
+      window.dispatchEvent(new CustomEvent('postUpdated'));
+    },
+  };
+
+  return <PostCard data={enhancedData} hideReportBtn={hideReportBtn} />;
 };
 
 export default Profile;
