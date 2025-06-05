@@ -60,13 +60,14 @@ export default function ResetOTP() {
     }
   }, [isResendOtpSuccess]);
 
-  const onFinish = () => {
+  const onFinish = async () => {
     if (!email) {
       navigate(-1);
     }
     const code = otpArray.join('');
     if (!isForgotPassword) {
-      verifyOtp({ email, otp: code });
+      await verifyOtp({ email, otp: code }).unwrap();
+      navigate('/login');
       return;
     }
     verifyForgotOtp({ email, otp: code });
