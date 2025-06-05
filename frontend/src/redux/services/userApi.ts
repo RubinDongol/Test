@@ -7,7 +7,7 @@ import { API_Methods } from '../helpers/types';
 export const userApi = createApi({
   reducerPath: 'userApi',
   baseQuery: baseQuery,
-  tagTypes: ['User', 'Follow'],
+  tagTypes: ['User', 'Follow', 'Post'],
   endpoints: builder => ({
     // Follow a user
     followUser: builder.mutation<{ message: string }, number>({
@@ -66,7 +66,18 @@ export interface IUserProfile {
   is_verified: boolean;
   created_at: string;
   updated_at: string;
-  posts: any[];
+  posts: IUserPost[];
+}
+
+export interface IUserPost {
+  id: number;
+  user_id: number;
+  content: string;
+  created_at: string;
+  like_count: number;
+  comment_count: number;
+  is_bookmarked: boolean;
+  is_liked: boolean;
 }
 
 export interface IUpdateProfileParams {

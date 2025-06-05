@@ -7,7 +7,7 @@ import { API_Methods } from '../helpers/types';
 export const postApi = createApi({
   reducerPath: 'postApi',
   baseQuery: baseQuery,
-  tagTypes: ['Post', 'Comment'],
+  tagTypes: ['Post', 'Comment', 'User'],
   endpoints: builder => ({
     // Create a new post
     createPost: builder.mutation<IPost, { content: string }>({
@@ -47,7 +47,10 @@ export const postApi = createApi({
     }),
 
     // Toggle like on a post
-    toggleLikePost: builder.mutation<{ liked: boolean; message: string }, number>({
+    toggleLikePost: builder.mutation<
+      { liked: boolean; message: string },
+      number
+    >({
       query: postId => ({
         url: `posts/${postId}/like`,
         method: API_Methods.POST,
@@ -56,7 +59,10 @@ export const postApi = createApi({
     }),
 
     // Toggle bookmark on a post
-    toggleBookmarkPost: builder.mutation<{ bookmarked: boolean; message: string }, number>({
+    toggleBookmarkPost: builder.mutation<
+      { bookmarked: boolean; message: string },
+      number
+    >({
       query: postId => ({
         url: `posts/${postId}/bookmark`,
         method: API_Methods.POST,
@@ -82,6 +88,15 @@ export const postApi = createApi({
       }),
       providesTags: ['Comment'],
     }),
+
+    // Delete a post
+    deletePost: builder.mutation<{ message: string }, number>({
+      query: postId => ({
+        url: `posts/${postId}`,
+        method: API_Methods.DELETE,
+      }),
+      invalidatesTags: ['Post', 'User'],
+    }),
   }),
 });
 
@@ -94,6 +109,7 @@ export const {
   useToggleBookmarkPostMutation,
   useAddCommentMutation,
   useGetCommentsByPostIdQuery,
+  useDeletePostMutation,
 } = postApi;
 
 export interface IPost {
@@ -107,6 +123,7 @@ export interface IPost {
   comment_count: number;
   is_bookmarked: boolean;
   is_liked: boolean;
+  is_owner: boolean; // Added this field
 }
 
 export interface IComment {

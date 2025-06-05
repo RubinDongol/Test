@@ -10,6 +10,8 @@ import {
   useGetUserProfileQuery,
   useUpdateProfileMutation,
 } from '../../redux/services/userApi';
+import { UserOutlined } from '@ant-design/icons';
+// import { useDeletePostMutation } from '../../redux/services/postApi';
 
 const Profile = () => {
   const [imageUrl, setImageUrl] = useState<string>();
@@ -68,6 +70,13 @@ const Profile = () => {
 
   const displayData = profileData || user;
 
+  // Transform profile posts to match PostCard expected format
+  const transformedPosts =
+    profileData?.posts?.map(post => ({
+      ...post,
+      is_owner: true, // Since this is the user's profile, they own all posts here
+    })) || [];
+
   return (
     <AppWrapper>
       <div className="h-full flex flex-col border border-black bg-white overflow-y-auto flex-1">
@@ -76,7 +85,7 @@ const Profile = () => {
           <div className="flex gap-8">
             <div className="flex gap-8 items-center w-1/2">
               <button
-                className="w-[170px] h-[170px] rounded-full bg-[#D9D9D9] flex items-center cursor-pointer overflow-hidden"
+                className="w-[170px] h-[170px] rounded-full bg-[#D9D9D9] flex items-center justify-center cursor-pointer overflow-hidden"
                 onClick={handleGetImage}>
                 {imageUrl || displayData.photo ? (
                   <img
@@ -85,9 +94,7 @@ const Profile = () => {
                     className="w-[170px] h-[170px] object-cover rounded-full"
                   />
                 ) : (
-                  <Typography className="!text-[#28A3DB] !text-[20px] text-center">
-                    Upload a profile picture
-                  </Typography>
+                  <UserOutlined className="text-[100px] rounded-full" />
                 )}
               </button>
               <div className="space-y-2">
@@ -132,14 +139,16 @@ const Profile = () => {
           <Typography className="!text-2xl">Your Posts</Typography>
         </div>
 
-        {profileData?.posts?.length === 0 ? (
+        {transformedPosts.length === 0 ? (
           <div className="flex justify-center items-center p-8">
             <Typography>No posts yet. Create your first post!</Typography>
           </div>
         ) : (
-          profileData?.posts?.map(post => (
-            <PostCard key={post.id} data={post} hideReportBtn />
-          ))
+          <div className="flex-1">
+            {transformedPosts.map(post => (
+              <PostCard key={post.id} data={post} hideReportBtn />
+            ))}
+          </div>
         )}
       </div>
     </AppWrapper>

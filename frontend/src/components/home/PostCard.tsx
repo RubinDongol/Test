@@ -1,5 +1,5 @@
 // frontend/src/components/home/PostCard.tsx
-import { notification, Typography, Modal, Input } from 'antd';
+import { notification, Typography, Modal, Input, Popconfirm } from 'antd';
 import { BookmarkIcon, ChatIcon, FlagIcon, HeartIcon } from '../../assets';
 import { UserNameWithIcon } from '../common';
 import { useLocation } from 'react-router-dom';
@@ -8,9 +8,11 @@ import {
   useToggleBookmarkPostMutation,
   useAddCommentMutation,
   useGetCommentsByPostIdQuery,
+  useDeletePostMutation,
   IPost,
 } from '../../redux/services/postApi';
 import { useState } from 'react';
+import { DeleteOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
 
@@ -29,6 +31,7 @@ const PostCard = ({
   const [toggleLike] = useToggleLikePostMutation();
   const [toggleBookmark] = useToggleBookmarkPostMutation();
   const [addComment, { isLoading: isAddingComment }] = useAddCommentMutation();
+  const [deletePost, { isLoading: isDeletingPost }] = useDeletePostMutation();
   const { data: comments = [] } = useGetCommentsByPostIdQuery(data.id, {
     skip: !commentModalVisible,
   });
@@ -67,6 +70,16 @@ const PostCard = ({
       notification.success({ message: 'Comment added successfully!' });
     } catch (error) {
       console.error('Error adding comment:', error);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    try {
+      await deletePost(data.id).unwrap();
+      notification.success({ message: 'Post deleted successfully!' });
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      notification.error({ message: 'Failed to delete post' });
     }
   };
 
@@ -155,6 +168,30 @@ const PostCard = ({
               />
             </svg>
           </button>
+
+          {/* Delete Button - Only show if user owns the post */}
+          {data.is_owner && (
+            <Popconfirm
+              title="Delete Post"
+              description="Are you sure you want to delete this post?"
+              onConfirm={handleDeletePost}
+              okText="Yes, Delete"
+              cancelText="Cancel"
+              okButtonProps={{
+                danger: true,
+                loading: isDeletingPost,
+              }}
+              placement="topRight">
+              <button
+                className="flex gap-1 items-center cursor-pointer transition-colors duration-200 text-red-500 hover:text-red-700"
+                disabled={isDeletingPost}>
+                <DeleteOutlined className="w-5 h-5" />
+                <Typography className="!text-sm text-red-500">
+                  {isDeletingPost ? 'Deleting...' : 'Delete'}
+                </Typography>
+              </button>
+            </Popconfirm>
+          )}
         </div>
 
         {!hideReportBtn && (
