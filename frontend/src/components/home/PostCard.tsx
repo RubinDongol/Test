@@ -108,24 +108,52 @@ const PostCard = ({
           </button>
 
           <button
-            className="flex gap-1 items-center cursor-pointer"
+            className="flex gap-1 items-center cursor-pointer transition-colors duration-200"
             onClick={handleLike}>
-            <img
-              src={HeartIcon}
-              alt="heart"
-              className={`w-6 h-6 object-contain ${data.is_liked ? 'text-red-500' : ''}`}
-            />
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill={data.is_liked ? '#ef4444' : 'none'}
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-6 h-6 transition-colors duration-200 ${
+                data.is_liked
+                  ? 'text-red-500'
+                  : 'text-gray-600 hover:text-red-400'
+              }`}>
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M2.25003 8.28028C2.27927 5.42838 4.54489 3 7.45687 3C9.24426 3 10.559 3.88475 11.398 4.71777C11.6316 4.94972 11.8321 5.18108 12 5.39441C12.1679 5.18108 12.3683 4.94972 12.602 4.71777C13.441 3.88475 14.7557 3 16.5431 3C19.4551 3 21.7207 5.42838 21.75 8.28028C21.8054 13.8425 17.3361 17.6908 12.8437 20.7403C12.5949 20.9095 12.3009 21.0001 12 21.0001C11.699 21.0001 11.4051 20.9095 11.1562 20.7403C6.66343 17.6908 2.19407 13.8426 2.25003 8.28028Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            </svg>
             <Typography className="!text-sm">{data.like_count}</Typography>
           </button>
 
           <button
-            className="flex gap-1 items-center cursor-pointer"
+            className="flex gap-1 items-center cursor-pointer transition-colors duration-200"
             onClick={handleBookmark}>
-            <img
-              src={BookmarkIcon}
-              alt="bookmark"
-              className={`w-6 h-6 object-contain ${data.is_bookmarked ? 'text-blue-500' : ''}`}
-            />
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill={data.is_bookmarked ? '#3b82f6' : 'none'}
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-6 h-6 transition-colors duration-200 ${
+                data.is_bookmarked
+                  ? 'text-blue-500'
+                  : 'text-gray-600 hover:text-blue-400'
+              }`}>
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M5.37868 2.37868C5.94129 1.81607 6.70435 1.5 7.5 1.5H16.5C17.2956 1.5 18.0587 1.81607 18.6213 2.37868C19.1839 2.94129 19.5 3.70435 19.5 4.5V21.75C19.5 22.0453 19.3267 22.3132 19.0572 22.4342C18.7878 22.5552 18.4725 22.5068 18.2517 22.3106L12 16.7535L5.74827 22.3106C5.52753 22.5068 5.21218 22.5552 4.94276 22.4342C4.67333 22.3132 4.5 22.0453 4.5 21.75V4.5C4.5 3.70435 4.81607 2.94129 5.37868 2.37868Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            </svg>
           </button>
         </div>
 
