@@ -391,6 +391,67 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
+// @desc Get user profile by ID (Public)
+export const getUserProfile = async (req: Request, res: Response) => {
+  const viewer = (req as any).user;
+  const userId = parseInt(req.params.userId, 10);
+
+  if (!userId) {
+    return res.status(400).json({ message: "Invalid user ID" });
+  }
+
+  try {
+    const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [
+      userId,
+    ]);
+    const profileUser = userResult.rows[0];
+
+    if (!profileUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const postsResult = await pool.query(
+      `
+      SELECT
+        p.*,
+        COALESCE(l.like_count, 0)::int AS like_count,
+        COALESCE(c.comment_count, 0)::int AS comment_count,
+        EXISTS (
+          SELECT 1 FROM bookmarks b WHERE b.post_id = p.id AND b.user_id = $1
+        ) AS is_bookmarked,
+        EXISTS (
+          SELECT 1 FROM likes l WHERE l.post_id = p.id AND l.user_id = $1
+        ) AS is_liked,
+        (p.user_id = $1) AS is_owner
+      FROM posts p
+      LEFT JOIN (
+        SELECT post_id, COUNT(*) AS like_count
+        FROM likes
+        GROUP BY post_id
+      ) l ON l.post_id = p.id
+      LEFT JOIN (
+        SELECT post_id, COUNT(*) AS comment_count
+        FROM comments
+        GROUP BY post_id
+      ) c ON c.post_id = p.id
+      WHERE p.user_id = $2
+      ORDER BY p.created_at DESC
+      `,
+      [viewer.id, userId]
+    );
+
+    const { password, otp_code, otp_expires_at, ...safeProfile } = profileUser;
+
+    res.status(200).json({
+      ...safeProfile,
+      posts: postsResult.rows,
+    });
+  } catch (err) {
+    console.error("getUserProfile error:", err);
+    res.status(500).json({ message: "Failed to fetch user profile" });
+  }
+};
+
 export const logoutUser = async (_req: Request, res: Response) => {
   res.status(200).json({ message: "User logged out successfully" });
 };
