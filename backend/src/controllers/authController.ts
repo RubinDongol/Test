@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import pool from "../config/db";
 import { User } from "../models/userModel";
-import { sendEmail } from '../utils/sendEmails';
+import { sendEmail } from "../utils/sendEmails";
 
 // Generate JWT
 const generateToken = (id: number): string => {
@@ -26,7 +26,7 @@ export const registerUser = async (req: Request, res: Response) => {
   const userExist = await pool.query("SELECT * FROM users WHERE email = $1", [
     email,
   ]);
-  
+
   if (userExist.rows.length > 0) {
     res.status(400).json({ message: "User already exists" });
     return;
@@ -34,8 +34,8 @@ export const registerUser = async (req: Request, res: Response) => {
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
-  
-  const otp = Math.floor(100000 + Math.random() * 900000).toString(); 
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
   const newUser = await pool.query(
@@ -46,11 +46,11 @@ export const registerUser = async (req: Request, res: Response) => {
       email,
       hashedPassword,
       role_id || 2,
-      address || '',
-      bio || '',
+      address || "",
+      bio || "",
       photo || null,
       otp,
-      otpExpiresAt
+      otpExpiresAt,
     ]
   );
 
@@ -62,7 +62,7 @@ export const registerUser = async (req: Request, res: Response) => {
     "Cookify Account Verification - Your OTP Code",
     `Hello ${full_name},\n\nYour OTP code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nThank you!`
   );
-  
+
   // Now send response
   res.status(201).json({
     id: user.id,
@@ -74,7 +74,7 @@ export const registerUser = async (req: Request, res: Response) => {
     photo: user.photo,
     created_at: user.created_at,
     updated_at: user.updated_at,
-  });  
+  });
 };
 
 // @desc    Login user
@@ -85,6 +85,8 @@ export const loginUser = async (req: Request, res: Response) => {
   const userResult = await pool.query("SELECT * FROM users WHERE email = $1", [
     email,
   ]);
+
+  console.log("userResult", userResult);
   const user: User = userResult.rows[0];
 
   if (user && (await bcrypt.compare(password, user.password))) {
@@ -92,13 +94,13 @@ export const loginUser = async (req: Request, res: Response) => {
       id: user.id,
       name: user.full_name,
       email: user.email,
+      role_id: user.role_id,
       token: generateToken(user.id),
     });
   } else {
     res.status(401).json({ message: "Invalid email or password" });
   }
 };
-
 
 export const verifyOtp = async (req: Request, res: Response) => {
   const { email, otp } = req.body;
@@ -107,14 +109,18 @@ export const verifyOtp = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email and OTP required" });
   }
 
-  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   const user = userRes.rows[0];
 
   const now = new Date();
   if (new Date(user.otp_expires_at) < now) {
-    return res.status(400).json({ message: "OTP expired. Please request a new one." });
+    return res
+      .status(400)
+      .json({ message: "OTP expired. Please request a new one." });
   }
-  
+
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
@@ -135,7 +141,6 @@ export const verifyOtp = async (req: Request, res: Response) => {
   res.status(200).json({ message: "Email verified successfully" });
 };
 
-
 // @desc    Get user profile (Protected)
 // @route   GET /api/auth/profile
 export const getProfile = async (req: Request, res: Response) => {
@@ -147,7 +152,9 @@ export const getProfile = async (req: Request, res: Response) => {
 
   try {
     // Fetch latest user data
-    const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [user.id]);
+    const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [
+      user.id,
+    ]);
     const currentUser = userResult.rows[0];
 
     if (!currentUser) {
@@ -183,7 +190,6 @@ export const getProfile = async (req: Request, res: Response) => {
       `,
       [user.id]
     );
-    
 
     const { password, otp_code, otp_expires_at, ...safeUser } = currentUser;
 
@@ -197,7 +203,6 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-
 export const resendOtp = async (req: Request, res: Response) => {
   const { email } = req.body;
 
@@ -205,7 +210,9 @@ export const resendOtp = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email is required" });
   }
 
-  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   const user: User = userRes.rows[0];
 
   if (!user) {
@@ -243,7 +250,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email is required" });
   }
 
-  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   const user: User = userRes.rows[0];
 
   if (!user) {
@@ -251,7 +260,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 
   if (!user.is_verified) {
-    return res.status(400).json({ message: "Email is not verified. Cannot reset password." });
+    return res
+      .status(400)
+      .json({ message: "Email is not verified. Cannot reset password." });
   }
 
   // Generate new OTP for password reset
@@ -279,40 +290,52 @@ export const verifyPasswordOtp = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email and OTP are required" });
   }
 
-  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   const user: User = userRes.rows[0];
 
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
 
-const now = new Date();
-if (!user.otp_code || !user.otp_expires_at || new Date(user.otp_expires_at) < now) {
-  return res.status(400).json({ message: "OTP expired or not found. Request new one." });
-}
-
+  const now = new Date();
+  if (
+    !user.otp_code ||
+    !user.otp_expires_at ||
+    new Date(user.otp_expires_at) < now
+  ) {
+    return res
+      .status(400)
+      .json({ message: "OTP expired or not found. Request new one." });
+  }
 
   if (user.otp_code !== otp) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
   // Mark OTP as verified (optional, or let reset-password use this)
-  await pool.query(
-    "UPDATE users SET otp_code = NULL WHERE email = $1",
-    [email]
-  );
+  await pool.query("UPDATE users SET otp_code = NULL WHERE email = $1", [
+    email,
+  ]);
 
-  res.status(200).json({ message: "OTP verified successfully. You can now reset your password." });
+  res.status(200).json({
+    message: "OTP verified successfully. You can now reset your password.",
+  });
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
   const { email, newPassword } = req.body;
 
   if (!email || !newPassword) {
-    return res.status(400).json({ message: "Email and new password are required" });
+    return res
+      .status(400)
+      .json({ message: "Email and new password are required" });
   }
 
-  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+  const userRes = await pool.query("SELECT * FROM users WHERE email = $1", [
+    email,
+  ]);
   const user: User = userRes.rows[0];
 
   if (!user) {
@@ -322,12 +345,15 @@ export const resetPassword = async (req: Request, res: Response) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-  await pool.query(
-    "UPDATE users SET password = $1 WHERE email = $2",
-    [hashedPassword, email]
-  );
+  await pool.query("UPDATE users SET password = $1 WHERE email = $2", [
+    hashedPassword,
+    email,
+  ]);
 
-  res.status(200).json({ message: "Password reset successful. You can now login with your new password." });
+  res.status(200).json({
+    message:
+      "Password reset successful. You can now login with your new password.",
+  });
 };
 
 export const updateProfile = async (req: Request, res: Response) => {
