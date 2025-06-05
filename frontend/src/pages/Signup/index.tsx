@@ -1,3 +1,4 @@
+// frontend/src/pages/Signup/index.tsx
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Form,
@@ -24,7 +25,6 @@ export default function SignUp() {
   const navigate = useNavigate();
 
   const { isLoading: isRolesLoading, data } = useGetRolesQuery();
-
   const [signup, { isLoading, isSuccess, data: signupData }] =
     useSignupMutation();
 
@@ -43,8 +43,12 @@ export default function SignUp() {
   }, [isSuccess]);
 
   const onFinish = (values: any) => {
-    const { fullName, ...rest } = values;
-    signup({ full_name: fullName, ...rest });
+    const { fullName, role, ...rest } = values;
+    signup({
+      full_name: fullName,
+      role_id: role,
+      ...rest,
+    });
   };
 
   return (
@@ -117,10 +121,12 @@ export default function SignUp() {
               rules={[{ required: true, message: 'Bio is required.' }]}>
               <Input.TextArea
                 placeholder="Bio"
-                className="h-10 rounded text-black"
+                className="rounded text-black"
                 style={{ borderColor: '#CCCCCC' }}
+                rows={3}
               />
             </Form.Item>
+
             <Form.Item
               label="Address"
               name="address"
@@ -149,15 +155,6 @@ export default function SignUp() {
                 ))}
               </Select>
             </Form.Item>
-
-            {/* Forgot password link */}
-            {/* <div className="flex justify-start my-2 text-sm">
-              <Link
-                to="/forgot-password"
-                className="text-blue-500 hover:underline">
-                Forgot password?
-              </Link>
-            </div> */}
 
             {/* Terms & Conditions */}
             <Form.Item

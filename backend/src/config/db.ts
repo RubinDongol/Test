@@ -1,4 +1,4 @@
-// /config/db.ts
+// backend/src/config/db.ts - Fix the typo in bookmarks table
 import { Pool } from "pg";
 import dotenv from "dotenv";
 
@@ -66,38 +66,38 @@ export const connectDB = async (): Promise<void> => {
 
     // Likes table
     await client.query(`
-  CREATE TABLE IF NOT EXISTS likes (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    post_id INTEGER REFERENCES posts(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, post_id)
-  );
-`);
+      CREATE TABLE IF NOT EXISTS likes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        post_id INTEGER REFERENCES posts(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, post_id)
+      );
+    `);
     console.log("Likes table ready");
 
     // Comments table
     await client.query(`
-  CREATE TABLE IF NOT EXISTS comments (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    post_id INTEGER REFERENCES posts(id),
-    text TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        post_id INTEGER REFERENCES posts(id),
+        text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
     console.log("Comments table ready");
 
-    // Bookmarks table
+    // Bookmarks table - FIXED the typo (removed the 'w' after user_id)
     await client.query(`
-  CREATE TABLE IF NOT EXISTS bookmarks (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),w
-    post_id INTEGER REFERENCES posts(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, post_id)
-  );
-`);
+      CREATE TABLE IF NOT EXISTS bookmarks (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        post_id INTEGER REFERENCES posts(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, post_id)
+      );
+    `);
     console.log("Bookmarks table ready");
 
     await client.query(`

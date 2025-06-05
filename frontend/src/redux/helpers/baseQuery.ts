@@ -1,3 +1,4 @@
+// frontend/src/redux/helpers/baseQuery.ts - Alternative type-safe version
 import {
   BaseQueryFn,
   FetchArgs,
@@ -11,8 +12,10 @@ const DEFAULT_TIMEOUT = 15000;
 const baseQueryForUrl = fetchBaseQuery({
   baseUrl: 'http://localhost:8080/api/',
   timeout: DEFAULT_TIMEOUT,
-  prepareHeaders: async headers => {
-    const token = '';
+  prepareHeaders: async (headers, { getState }) => {
+    const state = getState() as any;
+    const token = state.auth?.accessToken;
+
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
@@ -26,25 +29,35 @@ export const baseQuery: BaseQueryFn<
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
   const result = await baseQueryForUrl(args, api, extraOptions);
-  const error = result?.error;
-  if (error) {
+
+  if (result.error) {
+    const { error } = result;
+
+    // Handle 401 Unauthorized
     if (
       error.status === 401 &&
       !result.meta?.request?.url?.includes('register') &&
       !result.meta?.request?.url?.includes('login')
     ) {
       api.dispatch(logout());
-    } else {
-      const errorMsg = error?.data?.message;
-      if (errorMsg) {
-        api.dispatch(setErrorMessage(errorMsg));
-      } else {
-        if (error?.status === 'TIMEOUT_ERROR') {
-          return api.dispatch(setErrorMessage('Request timed out!'));
-        }
-        api.dispatch(setErrorMessage('Server Error'));
-      }
+      return result;
     }
+
+    // Handle other errors
+    let errorMessage = 'Server Error';
+
+    if (error.status === 'TIMEOUT_ERROR') {
+      errorMessage = 'Request timed out!';
+    } else if (
+      error.data &&
+      typeof error.data === 'object' &&
+      'message' in error.data
+    ) {
+      errorMessage = (error.data as { message: string }).message;
+    }
+
+    api.dispatch(setErrorMessage(errorMessage));
   }
+
   return result;
 };

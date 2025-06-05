@@ -1,3 +1,4 @@
+// frontend/src/redux/services/authApi.ts
 import { createApi } from '@reduxjs/toolkit/query/react';
 
 import { baseQuery } from '../helpers/baseQuery';
@@ -27,6 +28,7 @@ export const authApi = createApi({
         }
       },
     }),
+
     signup: builder.mutation<IUser, SignupParams>({
       query: params => ({
         url: 'auth/register',
@@ -44,6 +46,7 @@ export const authApi = createApi({
         }
       },
     }),
+
     forgotPassword: builder.mutation<any, string>({
       query: email => ({
         url: 'auth/forgot-password',
@@ -51,6 +54,7 @@ export const authApi = createApi({
         body: { email },
       }),
     }),
+
     verifyOtp: builder.mutation<any, { email: string; otp: string }>({
       query: ({ email, otp }) => ({
         url: 'auth/verify-otp',
@@ -58,6 +62,7 @@ export const authApi = createApi({
         body: { email, otp },
       }),
     }),
+
     verifyForgotOtp: builder.mutation<any, { email: string; otp: string }>({
       query: ({ email, otp }) => ({
         url: 'auth/verify-password-otp',
@@ -65,6 +70,7 @@ export const authApi = createApi({
         body: { email, otp },
       }),
     }),
+
     resendOtp: builder.mutation<any, string>({
       query: email => ({
         url: 'auth/resend-otp',
@@ -72,6 +78,7 @@ export const authApi = createApi({
         body: { email },
       }),
     }),
+
     resetPassword: builder.mutation<
       any,
       { email: string; newPassword: string }
@@ -82,12 +89,39 @@ export const authApi = createApi({
         body: { email, newPassword },
       }),
     }),
+
+    getProfile: builder.query<IUserProfile, void>({
+      query: () => ({
+        url: 'auth/profile',
+        method: API_Methods.GET,
+      }),
+      providesTags: ['User'],
+    }),
+
+    updateProfile: builder.mutation<IUserProfile, IUpdateProfileParams>({
+      query: params => ({
+        url: 'auth/profile',
+        method: API_Methods.PUT,
+        body: params,
+      }),
+      invalidatesTags: ['User'],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(saveUser(data as any));
+        } catch (error) {
+          console.log('Error updating profile:', error);
+        }
+      },
+    }),
+
     logout: builder.mutation<null, void>({
       query: () => ({
-        url: 'logout',
+        url: 'auth/logout',
         method: API_Methods.POST,
       }),
     }),
+
     getRoles: builder.query<{ id: number; name: string }[], void>({
       query: () => ({
         url: 'roles',
@@ -107,6 +141,8 @@ export const {
   useGetRolesQuery,
   useVerifyForgotOtpMutation,
   useResetPasswordMutation,
+  useGetProfileQuery,
+  useUpdateProfileMutation,
 } = authApi;
 
 export interface LoginParams {
@@ -132,9 +168,32 @@ export interface IUser {
   updated_at: string;
 }
 
+export interface IUserProfile {
+  id: number;
+  full_name: string;
+  email: string;
+  role_id: number;
+  address: string;
+  bio: string;
+  photo: string | null;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+  posts: any[];
+}
+
+export interface IUpdateProfileParams {
+  full_name?: string;
+  address?: string;
+  bio?: string;
+  photo?: string;
+}
+
 export interface SignupParams {
   email: string;
   full_name: string;
   password: string;
-  role: string;
+  role_id: number;
+  address: string;
+  bio: string;
 }
