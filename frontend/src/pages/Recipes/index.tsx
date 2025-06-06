@@ -1,4 +1,4 @@
-// frontend/src/pages/Recipes/index.tsx
+// frontend/src/pages/Recipes/index.tsx - Updated with proper Spoonacular integration
 import { Typography, Spin, Alert } from 'antd';
 import { AppWrapper } from '../../components/layouts';
 import { RecipeCard } from '../../components/recipes';
@@ -18,22 +18,13 @@ const Recipes = () => {
           </div>
         </div>
 
-        {/* Static Category Sections - Limited API calls */}
+        {/* Recipe Sections - Using Spoonacular API */}
         <div className="flex-1 overflow-y-scroll pb-8">
           {/* Vegetarian Section */}
           <DietSection diet="vegetarian" title="Vegetarian" />
 
-          {/* Main Course Section */}
-          {/* <RecipeTypeSection type="main course" title="Main Course" /> */}
-
           {/* Appetizers Section */}
           <RecipeTypeSection type="appetizer" title="Appetizers" />
-
-          {/* Chinese Cuisine Section */}
-          {/* <CuisineSection cuisine="chinese" title="Chinese Cuisine" /> */}
-
-          {/* Indian Cuisine Section */}
-          {/* <CuisineSection cuisine="indian" title="Indian Cuisine" /> */}
 
           {/* Desserts Section */}
           <RecipeTypeSection type="dessert" title="Desserts" />
@@ -80,7 +71,11 @@ const CuisineSection = ({
       ) : (
         <div className="overflow-x-scroll flex gap-8">
           {cuisineRecipes?.recipes?.map(item => (
-            <RecipeCard key={item.id} data={item} />
+            <RecipeCard
+              key={item.id}
+              data={item}
+              isSpoonacular={true} // Mark as Spoonacular recipe
+            />
           ))}
         </div>
       )}
@@ -106,7 +101,7 @@ const DietSection = ({ diet, title }: { diet: string; title: string }) => {
       ) : error ? (
         <Alert
           message={`Error loading ${title.toLowerCase()}`}
-          description="Unable to fetch recipes. Please try again."
+          description="Unable to fetch recipes. Please check your API key and try again."
           type="warning"
           showIcon
         />
@@ -119,7 +114,11 @@ const DietSection = ({ diet, title }: { diet: string; title: string }) => {
       ) : (
         <div className="overflow-x-scroll flex gap-8">
           {dietRecipes?.recipes?.map(item => (
-            <RecipeCard key={item.id} data={item} />
+            <RecipeCard
+              key={item.id}
+              data={item}
+              isSpoonacular={true} // Mark as Spoonacular recipe
+            />
           ))}
         </div>
       )}
@@ -151,7 +150,7 @@ const RecipeTypeSection = ({
       ) : error ? (
         <Alert
           message={`Error loading ${title.toLowerCase()}`}
-          description="Unable to fetch recipes. Please try again."
+          description="Unable to fetch recipes. Please check your API key and try again."
           type="warning"
           showIcon
         />
@@ -164,7 +163,11 @@ const RecipeTypeSection = ({
       ) : (
         <div className="overflow-x-scroll flex gap-8">
           {typeRecipes?.recipes?.map(item => (
-            <RecipeCard key={item.id} data={item} />
+            <RecipeCard
+              key={item.id}
+              data={item}
+              isSpoonacular={true} // Mark as Spoonacular recipe
+            />
           ))}
         </div>
       )}

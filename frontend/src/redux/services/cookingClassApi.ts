@@ -1,4 +1,4 @@
-// frontend/src/redux/services/cookingClassApi.ts
+// frontend/src/redux/services/cookingClassApi.ts - Updated with proper payment types
 import { createApi } from '@reduxjs/toolkit/query/react';
 
 import { baseQuery } from '../helpers/baseQuery';
@@ -63,12 +63,13 @@ export const cookingClassApi = createApi({
       }),
       invalidatesTags: (result, error, { classId }) => [
         { type: 'CookingClass', id: classId },
+        'CookingClass', // Also invalidate the list
       ],
     }),
 
-    // Update payment status
+    // Update payment status - Enhanced with better error handling
     updatePaymentStatus: builder.mutation<
-      { message: string },
+      { message: string; payment_done: boolean },
       { classId: number; payment_done: boolean }
     >({
       query: ({ classId, payment_done }) => ({
@@ -78,7 +79,18 @@ export const cookingClassApi = createApi({
       }),
       invalidatesTags: (result, error, { classId }) => [
         { type: 'CookingClass', id: classId },
+        'CookingClass', // Also invalidate the list to refresh all data
       ],
+      // Transform the response to include the payment status
+      transformResponse: (response: any, meta, arg) => ({
+        message: response.message || 'Payment status updated successfully',
+        payment_done: arg.payment_done,
+      }),
+      // Handle errors appropriately
+      transformErrorResponse: (response: any) => ({
+        message: response?.data?.message || 'Failed to update payment status',
+        status: response?.status,
+      }),
     }),
   }),
 });
@@ -92,7 +104,7 @@ export const {
   useUpdatePaymentStatusMutation,
 } = cookingClassApi;
 
-// Types
+// Enhanced Types with better payment handling
 export interface ICookingClass {
   id: number;
   user_id: number;
@@ -112,7 +124,7 @@ export interface ICookingClass {
   course_fee: number;
   image: string;
   live_link: string;
-  payment_done: boolean;
+  payment_done: boolean; // This is the key field for payment status
   created_at: string;
   full_name: string; // Chef name
   photo: string | null; // Chef photo
@@ -136,4 +148,15 @@ export interface ICreateCookingClassParams {
   chef_notes?: string;
   course_fee?: number;
   image?: string;
+}
+
+// Additional types for payment handling
+export interface IPaymentStatusUpdate {
+  classId: number;
+  payment_done: boolean;
+}
+
+export interface IPaymentStatusResponse {
+  message: string;
+  payment_done: boolean;
 }

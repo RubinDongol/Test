@@ -1,9 +1,10 @@
-// frontend/src/components/recipes/RecipeCard.tsx - Final clean version
+// frontend/src/components/recipes/RecipeCard.tsx - Updated to handle Spoonacular recipes
 import { Rate, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 
 interface RecipeCardProps {
   needsSubscription?: boolean;
+  isSpoonacular?: boolean; // Add flag to distinguish Spoonacular recipes
   data: {
     id: string | number;
     recipeName: string;
@@ -15,12 +16,23 @@ interface RecipeCardProps {
     cookingTime?: number;
     difficulty?: string;
     cost?: number;
+    readyInMinutes?: number;
+    servings?: number;
+    sourceUrl?: string;
+    cuisines?: string[];
+    diets?: string[];
+    dishTypes?: string[];
   };
 }
 
-const RecipeCard = ({ needsSubscription, data }: RecipeCardProps) => {
+const RecipeCard = ({
+  needsSubscription,
+  data,
+  isSpoonacular = false,
+}: RecipeCardProps) => {
   const navigate = useNavigate();
-  const { id, imageUrl, recipeName, reviews, rating, chef } = data;
+  const { id, imageUrl, recipeName, reviews, rating, chef, readyInMinutes } =
+    data;
 
   // Function to construct image URL
   const getImageUrl = (imagePath: string | null): string => {
@@ -39,12 +51,24 @@ const RecipeCard = ({ needsSubscription, data }: RecipeCardProps) => {
   };
 
   const handleCardClick = () => {
-    navigate(`/recipe-detail/${id}`, {
-      state: {
-        recipeId: id,
-        fallbackData: data,
-      },
-    });
+    if (isSpoonacular) {
+      // For Spoonacular recipes, navigate with the Spoonacular ID
+      navigate(`/recipe-detail/${id}`, {
+        state: {
+          isSpoonacular: true,
+          spoonacularId: id,
+          fallbackData: data,
+        },
+      });
+    } else {
+      // For chef/internal recipes, use the existing navigation
+      navigate(`/recipe-detail/${id}`, {
+        state: {
+          recipeId: id,
+          fallbackData: data,
+        },
+      });
+    }
   };
 
   return (
@@ -69,6 +93,11 @@ const RecipeCard = ({ needsSubscription, data }: RecipeCardProps) => {
       <Typography className="!text-base font-medium">{recipeName}</Typography>
       {chef && (
         <Typography className="!text-sm text-gray-600">by {chef}</Typography>
+      )}
+      {readyInMinutes && (
+        <Typography className="!text-sm text-gray-500">
+          Ready in {readyInMinutes} minutes
+        </Typography>
       )}
       <div onClick={e => e.stopPropagation()}>
         <Rate allowHalf defaultValue={rating || 2.5} disabled />

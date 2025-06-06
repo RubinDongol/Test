@@ -1,12 +1,13 @@
-// frontend/src/components/classes/ClassCard.tsx - Updated with payment logic
+// frontend/src/components/classes/ClassCard.tsx - Updated with better payment integration
 import { RightOutlined } from '@ant-design/icons';
 import { Rate, Typography, Tag, Button } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserNameWithIcon } from '../common';
+import { useAppSelector } from '../../redux/hook';
 
 interface ClassCardProps {
   data: {
-    id: string;
+    id: string | number;
     title: string;
     price: number;
     chef: string;
@@ -21,11 +22,14 @@ interface ClassCardProps {
     payment_done?: boolean;
     stars?: number;
     review_count?: number;
+    user_id?: number; // Add user_id to check ownership
   };
 }
 
 const ClassCard = ({ data }: ClassCardProps) => {
   const navigate = useNavigate();
+  const { user } = useAppSelector(state => state.auth);
+
   const {
     id,
     title,
@@ -42,6 +46,7 @@ const ClassCard = ({ data }: ClassCardProps) => {
     payment_done = false,
     stars = 4,
     review_count = 0,
+    user_id,
   } = data;
 
   const formatDate = (dateString: string, timeString: string) => {
@@ -91,10 +96,59 @@ const ClassCard = ({ data }: ClassCardProps) => {
           paymentFor: 'liveClass',
           classId: id,
           amount: price,
+          classTitle: title,
+          classDuration: duration,
         },
       });
     }
   };
+
+  // Check if current user is the class owner
+  const isClassOwner = user_id && user && user_id === user.id;
+
+  // Determine button text and style based on ownership and payment status
+  const getButtonConfig = () => {
+    if (isClassOwner) {
+      return {
+        text: 'Manage Class',
+        className: 'bg-[#6c757d] hover:bg-[#5a6268] border-[#6c757d]',
+        onClick: () =>
+          navigate(`/classes-detail`, {
+            state: {
+              id,
+              title,
+              price,
+              chef,
+              description,
+              image,
+              duration,
+              class_date,
+              class_time,
+              max_students,
+              difficulty,
+              live_link,
+              payment_done,
+              stars,
+              review_count,
+            },
+          }),
+      };
+    } else if (payment_done) {
+      return {
+        text: 'Join Class',
+        className: 'bg-[#28A745] hover:bg-[#218838] border-[#28A745]',
+        onClick: handleJoinClass,
+      };
+    } else {
+      return {
+        text: `Book Now - Rs ${price.toLocaleString()}`,
+        className: 'bg-[#DC3545] hover:bg-[#c82333] border-[#DC3545]',
+        onClick: handleJoinClass,
+      };
+    }
+  };
+
+  const buttonConfig = getButtonConfig();
 
   return (
     <div className="border border-black rounded-xl flex">
@@ -128,9 +182,27 @@ const ClassCard = ({ data }: ClassCardProps) => {
                 </Typography>
               </div>
             </div>
-            <Typography className="!text-base !text-[#28A745] font-bold">
-              Rs {price.toLocaleString()}
-            </Typography>
+            <div className="flex flex-col items-end gap-1">
+              <Typography className="!text-base !text-[#28A745] font-bold">
+                Rs {price.toLocaleString()}
+              </Typography>
+              {/* Payment Status Indicator */}
+              {!isClassOwner && (
+                <div
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    payment_done
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}>
+                  {payment_done ? '✓ Paid' : 'Payment Pending'}
+                </div>
+              )}
+              {isClassOwner && (
+                <div className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Your Class
+                </div>
+              )}
+            </div>
           </div>
 
           <Typography className="!text-base !text-[#D63D00]">
@@ -185,27 +257,14 @@ const ClassCard = ({ data }: ClassCardProps) => {
               Date: {formatDate(class_date || '', class_time || '')}
             </Typography>
 
-            {/* Payment Status and Join Button */}
-            {payment_done ? (
-              <div className="flex flex-col items-end gap-1">
-                <Typography className="!text-sm !text-green-600 font-medium">
-                  ✓ Payment Complete
-                </Typography>
-                <Button
-                  type="primary"
-                  onClick={handleJoinClass}
-                  className="!bg-[#28A745] !border-[#28A745] hover:!bg-[#218838]">
-                  Join Class
-                </Button>
-              </div>
-            ) : (
-              <Button
-                type="primary"
-                onClick={handleJoinClass}
-                className="!bg-[#DC3545] !border-[#DC3545] hover:!bg-[#c82333]">
-                Book Now - Rs {price.toLocaleString()}
-              </Button>
-            )}
+            {/* Action Button */}
+            <Button
+              type="primary"
+              onClick={buttonConfig.onClick}
+              className={`${buttonConfig.className} border-none text-white font-medium`}
+              size="large">
+              {buttonConfig.text}
+            </Button>
           </div>
         </div>
       </div>

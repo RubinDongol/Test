@@ -1,3 +1,4 @@
+// frontend/src/routes/router.tsx - Updated router for recipe details
 import {
   Route,
   createBrowserRouter,
@@ -47,6 +48,7 @@ const AppRouter = createBrowserRouter(
         <Route path="/profile" element={<Profile />} />
         <Route path="/user-profile/:userId" element={<UserProfile />} />
         <Route path="/recipe" element={<Recipes />} />
+        {/* Updated recipe detail routes to handle both internal and Spoonacular recipes */}
         <Route path="/recipe-detail/:recipeId" element={<RecipeDetail />} />
         <Route path="/recipe-detail" element={<RecipeDetail />} />
         <Route path="/chefs" element={<Chefs />} />

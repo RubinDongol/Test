@@ -1,9 +1,9 @@
-// frontend/src/redux/services/recipeApi.ts
+// frontend/src/redux/services/recipeApi.ts - Updated with your API key
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-// Spoonacular API - You need to get a free API key from https://spoonacular.com/food-api
-const SPOONACULAR_API_KEY = import.meta.env.VITE_SPOONACULAR_API_KEY;
+// Your Spoonacular API Key
+const SPOONACULAR_API_KEY = '9ec6add2c1084bebad11951fb21b15bb';
 
 export const recipeApi = createApi({
   reducerPath: 'recipeApi',
