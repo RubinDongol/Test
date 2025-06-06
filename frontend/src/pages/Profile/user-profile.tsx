@@ -13,11 +13,13 @@ import {
 } from '../../redux/services/postApi';
 import { useState } from 'react';
 import { ChatIcon, FlagIcon } from '../../assets';
+import { useAppSelector } from '../../redux/hook';
 
 const { TextArea } = Input;
 
 const UserProfile = () => {
   const { userId } = useParams<{ userId: string }>();
+  const { user: currentUser } = useAppSelector(state => state.auth);
 
   const {
     data: profileData,
@@ -49,19 +51,24 @@ const UserProfile = () => {
   }
 
   // Transform profile posts to match PostCard expected format
+  // The key fix: properly set is_owner based on current user vs post user
   const transformedPosts =
     profileData?.posts?.map(post => ({
       ...post,
       full_name: profileData.full_name,
       photo: profileData.photo,
-      is_owner: false, // This is another user's profile
+      is_owner: currentUser.id === post.user_id, // This is the key fix
     })) || [];
 
   return (
     <AppWrapper>
       <div className="h-full flex flex-col border border-black bg-white overflow-y-auto flex-1">
         <div className="flex flex-col pt-8 pb-4 px-8 gap-8 border-b border-b-[#A6A3A3]">
-          <Typography className="!text-[32px]">User Profile</Typography>
+          <Typography className="!text-[32px]">
+            {currentUser.id === Number(userId)
+              ? 'Your Profile'
+              : 'User Profile'}
+          </Typography>
           <div className="flex gap-8">
             <div className="flex gap-8 items-center w-1/2">
               <div className="w-[170px] h-[170px] rounded-full bg-[#D9D9D9] flex items-center justify-center overflow-hidden">
@@ -283,7 +290,7 @@ const UserProfilePostCard = ({
             </svg>
           </button>
 
-          {/* Delete Button - Only show if user owns the post */}
+          {/* Delete Button - Show if user owns the post */}
           {data.is_owner && (
             <Popconfirm
               title="Delete Post"
@@ -301,7 +308,7 @@ const UserProfilePostCard = ({
                 disabled={isDeletingPost}>
                 <DeleteOutlined className="w-5 h-5" />
                 <Typography className="!text-sm text-red-500">
-                  {isDeletingPost ? 'Deleting...' : 'Delete'}
+                  {isDeletingPost ? 'Deleting...' : ''}
                 </Typography>
               </button>
             </Popconfirm>

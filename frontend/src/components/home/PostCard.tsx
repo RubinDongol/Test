@@ -51,10 +51,19 @@ const PostCard = ({
     try {
       const result = await toggleBookmark(data.id).unwrap();
       notification.success({
-        message: result.bookmarked ? 'Post bookmarked!' : 'Post unbookmarked!',
+        message: result.bookmarked
+          ? 'Post saved to your collection!'
+          : 'Post removed from collection!',
+        description: result.bookmarked
+          ? 'You can find it in your Saved Collection.'
+          : '',
       });
     } catch (error) {
       console.error('Error toggling bookmark:', error);
+      notification.error({
+        message: 'Failed to save post',
+        description: 'Please try again later.',
+      });
     }
   };
 
@@ -80,7 +89,6 @@ const PostCard = ({
 
       // Force refetch of user profile if we're on profile page
       if (window.location.pathname === '/profile') {
-        // This will trigger a refetch of the user profile
         window.location.reload();
       }
     } catch (error) {
@@ -153,7 +161,7 @@ const PostCard = ({
           </button>
 
           <button
-            className="flex gap-1 items-center cursor-pointer transition-colors duration-200"
+            className="flex gap-1 items-center cursor-pointer transition-colors duration-200 hover:bg-gray-50 p-1 rounded"
             onClick={handleBookmark}>
             <svg
               width="24"
@@ -174,6 +182,10 @@ const PostCard = ({
                 strokeWidth="1.5"
               />
             </svg>
+            <Typography
+              className={`!text-sm ${data.is_bookmarked ? 'text-blue-600' : ''}`}>
+              {data.is_bookmarked ? 'Saved' : ''}
+            </Typography>
           </button>
 
           {/* Delete Button - Only show if user owns the post */}

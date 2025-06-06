@@ -8,13 +8,12 @@ import {
   Upload,
   Button,
   Typography,
-  Space,
-  Rate,
   notification,
   Divider,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd';
+import { useCreateChefRecipeMutation } from '../../redux/services/chefRecipeApi';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -23,7 +22,7 @@ const { Option } = Select;
 interface AddRecipeModalProps {
   visible: boolean;
   onCancel: () => void;
-  onSubmit: (values: any) => void;
+  onSubmit?: () => void;
   loading?: boolean;
 }
 
@@ -42,7 +41,7 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   visible,
   onCancel,
   onSubmit,
-  loading = false,
+  loading: propLoading = false,
 }) => {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -52,6 +51,10 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [directions, setDirections] = useState<Direction[]>([
     { id: '1', step: '' },
   ]);
+
+  const [createChefRecipe, { isLoading: isCreatingRecipe }] =
+    useCreateChefRecipeMutation();
+  const loading = propLoading || isCreatingRecipe;
 
   const handleUploadChange: UploadProps['onChange'] = ({
     fileList: newFileList,
@@ -138,15 +141,34 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       }
 
       const recipeData = {
-        ...formValues,
-        ingredients: validIngredients,
-        directions: validDirections,
-        image: fileList[0]?.originFileObj || null,
+        name: formValues.recipeName,
+        type: formValues.recipeType,
+        cost: formValues.recipeType === 'premium' ? formValues.cost || 0 : 0,
+        description: formValues.description,
+        cooking_time: parseInt(formValues.cookingTime),
+        difficulty: formValues.difficulty,
+        tags: formValues.tags || [],
+        ingredients: validIngredients.map(ing => ({
+          name: ing.name,
+          quantity: ing.quantity,
+        })),
+        directions: validDirections.map(dir => dir.step),
       };
 
-      onSubmit(recipeData);
-    } catch (error) {
-      console.error('Form validation failed:', error);
+      await createChefRecipe(recipeData).unwrap();
+      notification.success({
+        message: 'Recipe Added Successfully!',
+        description: `${recipeData.name} has been added to your recipes.`,
+      });
+
+      handleCancel();
+      if (onSubmit) onSubmit(); // Call parent callback to refetch data
+    } catch (error: any) {
+      console.error('Recipe creation failed:', error);
+      notification.error({
+        message: 'Error Adding Recipe',
+        description: error?.data?.message || 'Please try again later.',
+      });
     }
   };
 
@@ -183,9 +205,8 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       <Form form={form} layout="vertical" requiredMark={false}>
         {/* Recipe Image */}
         <Form.Item
-          label={<Text strong>Recipe Image</Text>}
-          name="image"
-          rules={[{ required: true, message: 'Please upload a recipe image' }]}>
+          label={<Text strong>Recipe Image (Optional)</Text>}
+          name="image">
           <Upload
             listType="picture-card"
             fileList={fileList}
@@ -215,6 +236,31 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           </Select>
         </Form.Item>
 
+        {/* Cost (only for premium recipes) */}
+        <Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) =>
+            prevValues.recipeType !== currentValues.recipeType
+          }>
+          {({ getFieldValue }) =>
+            getFieldValue('recipeType') === 'premium' ? (
+              <Form.Item
+                label={<Text strong>Cost (NPR)</Text>}
+                name="cost"
+                rules={[
+                  { required: true, message: 'Please enter recipe cost' },
+                ]}>
+                <Input
+                  type="number"
+                  placeholder="500"
+                  size="large"
+                  prefix="NPR"
+                />
+              </Form.Item>
+            ) : null
+          }
+        </Form.Item>
+
         {/* Description */}
         <Form.Item
           label={<Text strong>Description</Text>}
@@ -228,26 +274,13 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           />
         </Form.Item>
 
-        {/* Cooking Time & Servings */}
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <Form.Item
-            label={<Text strong>Cooking Time (minutes)</Text>}
-            name="cookingTime"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: 'Please enter cooking time' }]}>
-            <Input type="number" placeholder="30" size="large" />
-          </Form.Item>
-
-          <Form.Item
-            label={<Text strong>Servings</Text>}
-            name="servings"
-            style={{ flex: 1 }}
-            rules={[
-              { required: true, message: 'Please enter number of servings' },
-            ]}>
-            <Input type="number" placeholder="4" size="large" />
-          </Form.Item>
-        </div>
+        {/* Cooking Time */}
+        <Form.Item
+          label={<Text strong>Cooking Time (minutes)</Text>}
+          name="cookingTime"
+          rules={[{ required: true, message: 'Please enter cooking time' }]}>
+          <Input type="number" placeholder="30" size="large" />
+        </Form.Item>
 
         <Divider />
 

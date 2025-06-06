@@ -7,6 +7,9 @@ import authReducer from './reducers/auth';
 import { authApi } from './services/authApi';
 import { postApi } from './services/postApi';
 import { userApi } from './services/userApi';
+import { recipeApi } from './services/recipeApi';
+import { chefRecipeApi } from './services/chefRecipeApi';
+import { recipeBookmarkApi } from './services/recipeBookmarkApi'; // Add this import
 
 const reducers = combineReducers({
   //all slices
@@ -15,6 +18,9 @@ const reducers = combineReducers({
   [authApi.reducerPath]: authApi.reducer,
   [postApi.reducerPath]: postApi.reducer,
   [userApi.reducerPath]: userApi.reducer,
+  [recipeApi.reducerPath]: recipeApi.reducer,
+  [chefRecipeApi.reducerPath]: chefRecipeApi.reducer,
+  [recipeBookmarkApi.reducerPath]: recipeBookmarkApi.reducer, // Add this line
 });
 
 const persistConfig = {
@@ -25,6 +31,9 @@ const persistConfig = {
     authApi.reducerPath,
     postApi.reducerPath,
     userApi.reducerPath,
+    recipeApi.reducerPath,
+    chefRecipeApi.reducerPath,
+    recipeBookmarkApi.reducerPath, // Add this line
     'bookmark',
     'swipe',
     'user',
@@ -51,7 +60,14 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: false,
       immutableCheck: false,
-    }).concat([authApi.middleware, postApi.middleware, userApi.middleware]),
+    }).concat([
+      authApi.middleware,
+      postApi.middleware,
+      userApi.middleware,
+      recipeApi.middleware,
+      chefRecipeApi.middleware,
+      recipeBookmarkApi.middleware, // Add this line
+    ]),
   devTools: import.meta.env.VITE_APP_ENV !== 'production',
 });
 

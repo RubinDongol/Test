@@ -47,6 +47,7 @@ const AppRouter = createBrowserRouter(
         <Route path="/profile" element={<Profile />} />
         <Route path="/user-profile/:userId" element={<UserProfile />} />
         <Route path="/recipe" element={<Recipes />} />
+        <Route path="/recipe-detail/:recipeId" element={<RecipeDetail />} />
         <Route path="/recipe-detail" element={<RecipeDetail />} />
         <Route path="/chefs" element={<Chefs />} />
         <Route path="/chef-detail" element={<ChefDetail />} />

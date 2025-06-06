@@ -1,65 +1,112 @@
 // frontend/src/pages/Recipes/detail.tsx
 import { useState } from 'react';
-import { Rate, Typography, Tag, Divider } from 'antd';
+import { Rate, Typography, Tag, Divider, notification } from 'antd';
 import {
   ClockCircleOutlined,
   UserOutlined,
   TagOutlined,
+  HeartOutlined,
+  HeartFilled,
 } from '@ant-design/icons';
 import { AppWrapper } from '../../components/layouts';
 import { BookmarkIcon, UserIcon } from '../../assets';
 import TextArea from 'antd/es/input/TextArea';
 import { ReviewCard } from '../../components/recipes';
 import { PlusCircleOutlined } from '@ant-design/icons';
-import { useLocation } from 'react-router-dom';
-import { USER_REVIEWS } from '../../utils/data';
+import { useParams, useLocation } from 'react-router-dom';
+import {
+  useGetChefRecipeDetailQuery,
+  useRateChefRecipeMutation,
+  useAddChefRecipeCommentMutation,
+} from '../../redux/services/chefRecipeApi';
 
 const RecipeDetail = () => {
+  const { recipeId } = useParams<{ recipeId: string }>();
+  const location = useLocation();
   const [isNoteInputVisible, setNoteInputVisible] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const location = useLocation();
-  const { data } = location.state || {};
-  const { imageUrl, recipeName } = data || {};
+  const [reviewText, setReviewText] = useState('');
+  const [userRating, setUserRating] = useState(0);
 
-  // Mock recipe data - in real app, this would come from API
-  const recipeData = {
-    name: recipeName || 'Spaghetti Carbonara',
-    image:
-      imageUrl ||
-      'https://images.pexels.com/photos/15076692/pexels-photo-15076692/free-photo-of-burger.jpeg',
-    description:
-      'A classic Italian pasta dish made with eggs, cheese, pancetta, and pepper. This authentic recipe delivers creamy, rich flavors that will transport you straight to Rome.',
-    cookingTime: 30,
-    servings: 4,
-    difficulty: 'Medium',
-    rating: 4.5,
-    reviewCount: 28,
-    isPremium: false,
-    chef: 'Chef Maria Romano',
-    tags: ['Italian', 'Pasta', 'Quick', 'Comfort Food'],
-    ingredients: [
-      { name: 'Spaghetti', quantity: '400g' },
-      { name: 'Pancetta or guanciale', quantity: '150g' },
-      { name: 'Large eggs', quantity: '4' },
-      { name: 'Pecorino Romano cheese (grated)', quantity: '100g' },
-      { name: 'Black pepper (freshly ground)', quantity: '1 tsp' },
-      { name: 'Salt', quantity: 'to taste' },
-    ],
-    directions: [
-      'Bring a large pot of salted water to boil. Cook spaghetti according to package directions until al dente.',
-      'While pasta cooks, cut pancetta into small cubes and cook in a large skillet over medium heat until crispy.',
-      'In a bowl, whisk together eggs, grated cheese, and black pepper.',
-      'Reserve 1 cup of pasta cooking water, then drain the pasta.',
-      'Immediately add hot pasta to the skillet with pancetta. Remove from heat.',
-      'Quickly pour the egg mixture over the pasta, tossing rapidly to create a creamy sauce. Add pasta water if needed.',
-      'Serve immediately with extra cheese and black pepper.',
-    ],
+  // API calls
+  const {
+    data: recipeData,
+    isLoading,
+    error,
+    refetch,
+  } = useGetChefRecipeDetailQuery(Number(recipeId), {
+    skip: !recipeId,
+  });
+
+  const [rateRecipe, { isLoading: isRating }] = useRateChefRecipeMutation();
+  const [addComment, { isLoading: isAddingComment }] =
+    useAddChefRecipeCommentMutation();
+
+  if (isLoading) {
+    return (
+      <AppWrapper>
+        <div className="h-full flex justify-center items-center">
+          <Typography>Loading recipe details...</Typography>
+        </div>
+      </AppWrapper>
+    );
+  }
+
+  if (error || !recipeData) {
+    return (
+      <AppWrapper>
+        <div className="h-full flex justify-center items-center">
+          <Typography className="text-red-500">
+            Recipe not found or error loading recipe details.
+          </Typography>
+        </div>
+      </AppWrapper>
+    );
+  }
+
+  const handleRating = async (rating: number) => {
+    try {
+      await rateRecipe({ recipeId: Number(recipeId), rating }).unwrap();
+      setUserRating(rating);
+      notification.success({ message: 'Rating submitted successfully!' });
+      refetch();
+    } catch (error) {
+      notification.error({ message: 'Failed to submit rating' });
+    }
+  };
+
+  const handleAddReview = async () => {
+    if (!reviewText.trim()) {
+      notification.warning({ message: 'Please enter a review' });
+      return;
+    }
+
+    try {
+      await addComment({
+        recipeId: Number(recipeId),
+        text: reviewText,
+      }).unwrap();
+      setReviewText('');
+      notification.success({ message: 'Review added successfully!' });
+      refetch();
+    } catch (error) {
+      notification.error({ message: 'Failed to add review' });
+    }
   };
 
   const saveNote = () => {
-    // Here you would save the note to your backend
+    // Here you would save the note to your backend or local storage
     console.log('Saving note:', noteText);
+    notification.success({ message: 'Note saved!' });
     setNoteInputVisible(false);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NP', {
+      style: 'currency',
+      currency: 'NPR',
+      minimumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -73,39 +120,46 @@ const RecipeDetail = () => {
                 {recipeData.name}
               </Typography>
               <Typography className="!text-base text-gray-600 mb-4">
-                by {recipeData.chef}
+                by {recipeData.full_name}
               </Typography>
 
               {/* Recipe Meta Info */}
               <div className="flex gap-6 items-center mb-4">
                 <div className="flex items-center gap-2">
                   <ClockCircleOutlined className="text-gray-500" />
-                  <span>{recipeData.cookingTime} mins</span>
+                  <span>{recipeData.cooking_time} mins</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <UserOutlined className="text-gray-500" />
-                  <span>Serves {recipeData.servings}</span>
+                  <span>Serves 4</span>
                 </div>
                 <Tag
                   color={
-                    recipeData.difficulty === 'Easy'
+                    recipeData.difficulty === 'easy'
                       ? 'green'
-                      : recipeData.difficulty === 'Medium'
+                      : recipeData.difficulty === 'medium'
                         ? 'orange'
                         : 'red'
                   }>
-                  {recipeData.difficulty}
+                  {recipeData.difficulty.charAt(0).toUpperCase() +
+                    recipeData.difficulty.slice(1)}
                 </Tag>
-                {recipeData.isPremium && <Tag color="gold">Premium</Tag>}
+                {recipeData.type === 'premium' && (
+                  <Tag color="gold">
+                    Premium - {formatCurrency(recipeData.cost)}
+                  </Tag>
+                )}
               </div>
 
               {/* Tags */}
-              <div className="flex items-center gap-2 mb-4">
-                <TagOutlined className="text-gray-500" />
-                {recipeData.tags.map(tag => (
-                  <Tag key={tag}>{tag}</Tag>
-                ))}
-              </div>
+              {recipeData.tags && recipeData.tags.length > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <TagOutlined className="text-gray-500" />
+                  {recipeData.tags.map(tag => (
+                    <Tag key={tag}>{tag}</Tag>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -114,7 +168,10 @@ const RecipeDetail = () => {
             <div className="space-y-4">
               <div className="w-[402px] h-[300px] rounded-[14px] bg-black shrink-0 overflow-hidden">
                 <img
-                  src={recipeData.image}
+                  src={
+                    recipeData.image ||
+                    'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg'
+                  }
                   className="w-full h-full object-cover rounded-[14px] hover:shadow-lg transition-shadow"
                   alt="recipe"
                 />
@@ -123,9 +180,14 @@ const RecipeDetail = () => {
                 <div
                   className="flex gap-1 items-center"
                   onClick={e => e.stopPropagation()}>
-                  <Rate allowHalf defaultValue={recipeData.rating} disabled />
+                  <Rate
+                    allowHalf
+                    value={userRating || recipeData.stars}
+                    onChange={handleRating}
+                    disabled={isRating}
+                  />
                   <Typography className="!text-base ml-2">
-                    {recipeData.reviewCount} Reviews
+                    {recipeData.review_count} Reviews
                   </Typography>
                 </div>
                 <button className="flex justify-between items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
@@ -181,10 +243,10 @@ const RecipeDetail = () => {
                 {recipeData.directions.map((step, index) => (
                   <div key={index} className="flex gap-3">
                     <div className="w-8 h-8 bg-[#DC3545] text-white rounded-full flex items-center justify-center font-semibold text-sm shrink-0">
-                      {index + 1}
+                      {step.step_number}
                     </div>
                     <Typography className="!text-base leading-relaxed pt-1">
-                      {step}
+                      {step.instruction}
                     </Typography>
                   </div>
                 ))}
@@ -240,20 +302,54 @@ const RecipeDetail = () => {
           <Typography className="!text-2xl !font-semibold mb-4">
             Reviews & Comments
           </Typography>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-4">
             <img src={UserIcon} alt="user" className="w-5 h-5 object-contain" />
-            <TextArea
-              placeholder="Share your experience with this recipe..."
-              autoSize={{ minRows: 3, maxRows: 3 }}
-              className="!text-black"
-            />
+            <div className="flex-1">
+              <TextArea
+                placeholder="Share your experience with this recipe..."
+                autoSize={{ minRows: 3, maxRows: 3 }}
+                className="!text-black mb-2"
+                value={reviewText}
+                onChange={e => setReviewText(e.target.value)}
+              />
+              <div className="flex justify-between items-center">
+                <Rate
+                  value={userRating}
+                  onChange={setUserRating}
+                  className="text-sm"
+                />
+                <button
+                  className="bg-[#DC3545] text-white px-4 py-1 rounded cursor-pointer hover:bg-[#c82333] transition-colors"
+                  onClick={handleAddReview}
+                  disabled={isAddingComment}>
+                  <Typography className="!text-white !text-base">
+                    {isAddingComment ? 'Adding...' : 'Add Review'}
+                  </Typography>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="">
-          {USER_REVIEWS.map(item => {
-            return <ReviewCard key={item.id} data={item} />;
-          })}
+          {recipeData.comments && recipeData.comments.length > 0 ? (
+            recipeData.comments.map(comment => (
+              <ReviewCard
+                key={comment.id}
+                data={{
+                  id: comment.id.toString(),
+                  userName: comment.full_name,
+                  review: comment.text,
+                }}
+              />
+            ))
+          ) : (
+            <div className="flex justify-center items-center p-8">
+              <Typography>
+                No reviews yet. Be the first to review this recipe!
+              </Typography>
+            </div>
+          )}
         </div>
       </div>
     </AppWrapper>

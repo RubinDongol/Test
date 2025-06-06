@@ -7,41 +7,52 @@ import { RecipeCard } from '../../components/recipes';
 import { ChefCard } from '../../components/chefs';
 import { useAppSelector } from '../../redux/hook';
 import AddRecipeModal from '../../components/recipes/AddRecipeModal';
-import { PREMIUM_RECIPEDATA, RECIPEDATA } from '../../utils/data';
+import { useGetAllChefRecipesQuery } from '../../redux/services/chefRecipeApi';
 
 const Chefs = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   const { user } = useAppSelector(state => state.auth);
+  const {
+    data: recipesData,
+    isLoading,
+    error,
+    refetch,
+  } = useGetAllChefRecipesQuery();
 
-  // Mock function to check if user is a chef
-  const isChef = true; // This should come from your auth state/user role
+  // Check if user is a chef (role_id 3 = chef)
+  const isChef = user.role_id === 3;
 
-  const handleAddRecipe = async (recipeData: any) => {
-    setIsLoading(true);
-    try {
-      // Here you would typically send the data to your backend
-      console.log('Recipe Data:', recipeData);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      notification.success({
-        message: 'Recipe Added Successfully!',
-        description: `${recipeData.recipeName} has been added to your recipes.`,
-      });
-
-      setIsModalVisible(false);
-    } catch (error) {
-      notification.error({
-        message: 'Error Adding Recipe',
-        description: 'Please try again later.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleAddRecipeSuccess = () => {
+    setIsModalVisible(false);
+    refetch(); // Refetch recipes after successful creation
   };
+
+  if (isLoading) {
+    return (
+      <AppWrapper>
+        <div className="h-full flex justify-center items-center">
+          <Typography>Loading recipes...</Typography>
+        </div>
+      </AppWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppWrapper>
+        <div className="h-full flex justify-center items-center">
+          <Typography className="text-red-500">
+            Error loading recipes. Please try again.
+          </Typography>
+        </div>
+      </AppWrapper>
+    );
+  }
+
+  const chefs = recipesData?.chefs || CHEF_DATA; // Fallback to mock data
+  const freeRecipes = recipesData?.free_recipes || [];
+  const premiumRecipes = recipesData?.premium_recipes || [];
 
   return (
     <AppWrapper>
@@ -52,7 +63,7 @@ const Chefs = () => {
               <Typography className="!text-[32px]">
                 Chefs & Their Recipes
               </Typography>
-              {user.role_id === 3 && isChef && (
+              {isChef && (
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
@@ -69,30 +80,52 @@ const Chefs = () => {
             <div className="flex flex-col pt-8 px-8 gap-8">
               <Typography className="!text-2xl">Featured Chefs</Typography>
               <div className="overflow-x-scroll flex gap-8 self-center">
-                {CHEF_DATA.map(item => {
+                {chefs.map(item => {
                   return <ChefCard key={item.id} data={item} />;
                 })}
               </div>
             </div>
 
             <div className="flex flex-col pt-8 px-8 gap-8">
-              <Typography className="!text-2xl">Chef's Recipe</Typography>
-              <div className="overflow-x-scroll flex gap-8">
-                {RECIPEDATA.map(item => {
-                  return <RecipeCard key={item.id} data={item} />;
-                })}
-              </div>
+              <Typography className="!text-2xl">Free Recipes</Typography>
+              {freeRecipes.length === 0 ? (
+                <div className="flex justify-center items-center p-8">
+                  <Typography>No free recipes available</Typography>
+                </div>
+              ) : (
+                <div className="overflow-x-scroll flex gap-8">
+                  {freeRecipes.map(item => {
+                    return (
+                      <ApiRecipeCard
+                        key={item.id}
+                        data={item}
+                        needsSubscription={false}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col pt-8 px-8 gap-8">
-              <Typography className="!text-2xl">Premium Recipe</Typography>
-              <div className="overflow-x-scroll flex gap-8">
-                {PREMIUM_RECIPEDATA.map(item => {
-                  return (
-                    <RecipeCard key={item.id} data={item} needsSubscription />
-                  );
-                })}
-              </div>
+              <Typography className="!text-2xl">Premium Recipes</Typography>
+              {premiumRecipes.length === 0 ? (
+                <div className="flex justify-center items-center p-8">
+                  <Typography>No premium recipes available</Typography>
+                </div>
+              ) : (
+                <div className="overflow-x-scroll flex gap-8">
+                  {premiumRecipes.map(item => {
+                    return (
+                      <ApiRecipeCard
+                        key={item.id}
+                        data={item}
+                        needsSubscription={true}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -101,11 +134,39 @@ const Chefs = () => {
         <AddRecipeModal
           visible={isModalVisible}
           onCancel={() => setIsModalVisible(false)}
-          onSubmit={handleAddRecipe}
-          loading={isLoading}
+          onSubmit={handleAddRecipeSuccess}
         />
       </>
     </AppWrapper>
+  );
+};
+
+// Component to handle API recipe data format
+const ApiRecipeCard = ({
+  data,
+  needsSubscription,
+}: {
+  data: any;
+  needsSubscription: boolean;
+}) => {
+  // Transform API data to match RecipeCard expected format
+  const transformedData = {
+    id: data.id, // Keep as number for API calls
+    recipeName: data.name,
+    reviews: data.review_count,
+    imageUrl:
+      data.image ||
+      'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg',
+    rating: data.stars || 0,
+    chef: data.full_name,
+    description: data.description,
+    cookingTime: data.cooking_time,
+    difficulty: data.difficulty,
+    cost: data.cost,
+  };
+
+  return (
+    <RecipeCard data={transformedData} needsSubscription={needsSubscription} />
   );
 };
 
