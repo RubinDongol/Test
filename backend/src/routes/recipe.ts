@@ -1,3 +1,4 @@
+// backend/src/routes/recipe.ts - Updated with image upload middleware
 import express from "express";
 import {
   getRecipe,
@@ -9,6 +10,7 @@ import {
   addRecipeComment,
   toggleLikeRecipeComment,
   replyToRecipeComment,
+  upload, // Import the multer upload middleware
 } from "../controllers/recipeController";
 import { protect } from "../middleware/authMiddleware";
 
@@ -20,14 +22,14 @@ router.get("/", protect, getRecipe);
 // Get a single recipe by ID
 router.get("/:id", protect, getRecipeDetail);
 
-// Create a recipe
-router.post("/", protect, createRecipe);
+// Create a recipe with image upload
+router.post("/", protect, upload.single("image"), createRecipe);
 
 // stars
 router.post("/:id/rate", protect, rateRecipe);
 
-// Update a recipe
-router.put("/:id", protect, updateRecipe);
+// Update a recipe with image upload
+router.put("/:id", protect, upload.single("image"), updateRecipe);
 
 // Delete a recipe
 router.delete("/:id", protect, deleteRecipe);

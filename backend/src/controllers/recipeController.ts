@@ -1,5 +1,43 @@
+// backend/src/controllers/recipeController.ts - Updated with image upload
 import { Request, Response } from "express";
 import pool from "../config/db";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = "uploads/recipes";
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "recipe-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const fileFilter = (req: any, file: any, cb: any) => {
+  // Check file type
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed!"), false);
+  }
+};
+
+export const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 // Get all recipes
 export const getRecipe = async (req: Request, res: Response) => {
@@ -19,7 +57,7 @@ export const getRecipe = async (req: Request, res: Response) => {
   }
 };
 
-// create a new recipe
+// create a new recipe with image upload
 export const createRecipe = async (req: Request, res: Response) => {
   const user = (req as any).user;
   const {
@@ -35,9 +73,20 @@ export const createRecipe = async (req: Request, res: Response) => {
   } = req.body;
 
   try {
+    // Parse JSON strings if they come as strings
+    const parsedIngredients =
+      typeof ingredients === "string" ? JSON.parse(ingredients) : ingredients;
+    const parsedDirections =
+      typeof directions === "string" ? JSON.parse(directions) : directions;
+    const parsedTags =
+      typeof tags === "string" && tags ? JSON.parse(tags) : tags;
+
+    // Handle image path
+    const imagePath = req.file ? `/uploads/recipes/${req.file.filename}` : null;
+
     const recipeResult = await pool.query(
       `INSERT INTO recipes (user_id, name, type, cost, description, cooking_time, difficulty, tags, image)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         user.id,
         name,
@@ -46,34 +95,50 @@ export const createRecipe = async (req: Request, res: Response) => {
         description,
         cooking_time,
         difficulty,
-        tags || null,
+        parsedTags || null,
+        imagePath,
       ]
     );
 
     const recipeId = recipeResult.rows[0].id;
 
-    for (const ing of ingredients) {
+    // Insert ingredients
+    for (const ing of parsedIngredients) {
       await pool.query(
         `INSERT INTO ingredients (recipe_id, name, quantity) VALUES ($1, $2, $3)`,
         [recipeId, ing.name, ing.quantity]
       );
     }
 
-    for (const [index, dir] of directions.entries()) {
+    // Insert directions
+    for (const [index, dir] of parsedDirections.entries()) {
       await pool.query(
         `INSERT INTO directions (recipe_id, step_number, instruction) VALUES ($1, $2, $3)`,
         [recipeId, index + 1, dir]
       );
     }
 
-    res.status(201).json({ message: "Recipe created successfully", recipeId });
+    res.status(201).json({
+      message: "Recipe created successfully",
+      recipeId,
+      imagePath,
+    });
   } catch (err) {
     console.error("createRecipe error:", err);
+
+    // Clean up uploaded file if recipe creation fails
+    if (req.file) {
+      const filePath = path.join("uploads/recipes", req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
     res.status(500).json({ message: "Failed to create recipe" });
   }
 };
 
-// update recipe
+// update recipe with image upload
 export const updateRecipe = async (req: Request, res: Response) => {
   const user = (req as any).user;
   const recipeId = parseInt(req.params.id);
@@ -101,9 +166,32 @@ export const updateRecipe = async (req: Request, res: Response) => {
         .json({ message: "Unauthorized or recipe not found" });
     }
 
+    const oldRecipe = recipeRes.rows[0];
+
+    // Parse JSON strings if they come as strings
+    const parsedIngredients =
+      typeof ingredients === "string" ? JSON.parse(ingredients) : ingredients;
+    const parsedDirections =
+      typeof directions === "string" ? JSON.parse(directions) : directions;
+    const parsedTags =
+      typeof tags === "string" && tags ? JSON.parse(tags) : tags;
+
+    // Handle image update
+    let imagePath = oldRecipe.image;
+    if (req.file) {
+      // Delete old image if it exists
+      if (oldRecipe.image) {
+        const oldImagePath = path.join(".", oldRecipe.image);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+      imagePath = `/uploads/recipes/${req.file.filename}`;
+    }
+
     await pool.query(
-      `UPDATE recipes SET name = $1, type = $2, cost = $3, description = $4, cooking_time = $5, difficulty = $6, tags = $7
-       WHERE id = $8`,
+      `UPDATE recipes SET name = $1, type = $2, cost = $3, description = $4, cooking_time = $5, difficulty = $6, tags = $7, image = $8
+       WHERE id = $9`,
       [
         name,
         type,
@@ -111,23 +199,26 @@ export const updateRecipe = async (req: Request, res: Response) => {
         description,
         cooking_time,
         difficulty,
-        tags,
+        parsedTags,
+        imagePath,
         recipeId,
       ]
     );
 
+    // Update ingredients
     await pool.query(`DELETE FROM ingredients WHERE recipe_id = $1`, [
       recipeId,
     ]);
-    for (const ing of ingredients) {
+    for (const ing of parsedIngredients) {
       await pool.query(
         `INSERT INTO ingredients (recipe_id, name, quantity) VALUES ($1, $2, $3)`,
         [recipeId, ing.name, ing.quantity]
       );
     }
 
+    // Update directions
     await pool.query(`DELETE FROM directions WHERE recipe_id = $1`, [recipeId]);
-    for (const [index, dir] of directions.entries()) {
+    for (const [index, dir] of parsedDirections.entries()) {
       await pool.query(
         `INSERT INTO directions (recipe_id, step_number, instruction) VALUES ($1, $2, $3)`,
         [recipeId, index + 1, dir]
@@ -137,11 +228,20 @@ export const updateRecipe = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Recipe updated successfully" });
   } catch (err) {
     console.error("updateRecipe error:", err);
+
+    // Clean up uploaded file if update fails
+    if (req.file) {
+      const filePath = path.join("uploads/recipes", req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
     res.status(500).json({ message: "Failed to update recipe" });
   }
 };
 
-// delete recipe
+// delete recipe with image cleanup
 export const deleteRecipe = async (req: Request, res: Response) => {
   const user = (req as any).user;
   const recipeId = parseInt(req.params.id);
@@ -157,6 +257,8 @@ export const deleteRecipe = async (req: Request, res: Response) => {
         .status(403)
         .json({ message: "Unauthorized or recipe not found" });
     }
+
+    const recipe = recipeRes.rows[0];
 
     // Delete dependent records in order
     await pool.query(
@@ -186,6 +288,14 @@ export const deleteRecipe = async (req: Request, res: Response) => {
 
     // Finally delete the recipe
     await pool.query(`DELETE FROM recipes WHERE id = $1`, [recipeId]);
+
+    // Delete associated image file
+    if (recipe.image) {
+      const imagePath = path.join(".", recipe.image);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
 
     res.status(200).json({ message: "Recipe deleted successfully" });
   } catch (err) {

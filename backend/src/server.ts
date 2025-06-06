@@ -1,10 +1,11 @@
-// backend/src/server.ts - Add the saved recipes route
+// backend/src/server.ts - Add static file serving for uploaded images
 import cors from "cors";
 import dotenv from "dotenv";
 import { Server } from "socket.io";
 import bodyParser from "body-parser";
 import { createServer } from "http";
 import express, { Request, Response, Application } from "express";
+import path from "path";
 
 // Routes
 import authRoutes from "./routes/auth";
@@ -12,7 +13,7 @@ import roleRoutes from "./routes/role";
 import postRoutes from "./routes/post";
 import userRoutes from "./routes/user";
 import recipeRoutes from "./routes/recipe";
-import savedRecipeRoutes from "./routes/saveRecipe"; // Add this import
+import savedRecipeRoutes from "./routes/saveRecipe";
 
 // DB
 import { connectDB } from "./config/db";
@@ -36,6 +37,9 @@ app.use(cors());
 app.options("*", cors());
 app.use(bodyParser.json());
 
+// Serve static files for uploaded images
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 // Database Connection
 connectDB();
 
@@ -45,7 +49,7 @@ app.use("/api/roles", roleRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/recipes", recipeRoutes);
-app.use("/api/saved-recipes", savedRecipeRoutes); // Add this route
+app.use("/api/saved-recipes", savedRecipeRoutes);
 
 // Test Route
 app.get("/", (req: Request, res: Response) => {
