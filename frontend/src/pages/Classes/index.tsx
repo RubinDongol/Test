@@ -1,45 +1,65 @@
-// frontend/src/pages/Classes/index.tsx
-import { Typography, Button, notification } from 'antd';
+// frontend/src/pages/Classes/index.tsx - Updated with real API
+import { Typography, Button, notification, Spin, Alert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import { AppWrapper } from '../../components/layouts';
 import { ClassCard } from '../../components/classes';
-import AddClassModal from '../../components/classes/AddClassModal.tsx';
-import { useAppSelector } from '../../redux/hook.ts';
+import AddClassModal from '../../components/classes/AddClassModal';
+import { useAppSelector } from '../../redux/hook';
+import {
+  useGetAllCookingClassesQuery,
+  useCreateCookingClassMutation,
+} from '../../redux/services/cookingClassApi';
 
 const Classes = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   const { user } = useAppSelector(state => state.auth);
+  const {
+    data: classes = [],
+    isLoading,
+    error,
+    refetch,
+  } = useGetAllCookingClassesQuery();
+  const [createClass, { isLoading: isCreatingClass }] =
+    useCreateCookingClassMutation();
 
-  // Mock function to check if user is a chef
-  const isChef = true; // This should come from your auth state/user role
+  // Check if user is a chef (role_id === 3)
+  const isChef = user.role_id === 3;
 
-  const handleAddClass = async (classData: any) => {
-    setIsLoading(true);
-    try {
-      // Here you would typically send the data to your backend
-      console.log('Class Data:', classData);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      notification.success({
-        message: 'Class Created Successfully!',
-        description: `${classData.title} has been scheduled and is now available for booking.`,
-      });
-
-      setIsModalVisible(false);
-    } catch (error) {
-      notification.error({
-        message: 'Error Creating Class',
-        description: 'Please try again later.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleAddClass = async () => {
+    // The modal now handles the creation directly
+    // Just refresh the data after successful creation
+    refetch();
   };
+
+  if (isLoading) {
+    return (
+      <AppWrapper>
+        <div className="h-full flex justify-center items-center">
+          <div className="text-center">
+            <Spin size="large" />
+            <Typography className="mt-4 text-lg">Loading classes...</Typography>
+          </div>
+        </div>
+      </AppWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppWrapper>
+        <div className="h-full flex justify-center items-center">
+          <Alert
+            message="Error Loading Classes"
+            description="Unable to fetch cooking classes. Please try again later."
+            type="error"
+            showIcon
+          />
+        </div>
+      </AppWrapper>
+    );
+  }
 
   return (
     <AppWrapper>
@@ -55,7 +75,7 @@ const Classes = () => {
                 chefs. Fully Interactive!
               </Typography>
             </div>
-            {user.role_id === 3 && isChef && (
+            {isChef && (
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -67,11 +87,24 @@ const Classes = () => {
             )}
           </div>
 
-          <div className="flex flex-col gap-8 items-center justify-center mx-auto max-w-[970px]">
-            {CLASS_DATA.map(item => (
-              <ClassCard key={item.id} data={item} />
-            ))}
-          </div>
+          {classes.length === 0 ? (
+            <div className="flex flex-col justify-center items-center h-64 gap-4">
+              <Typography className="text-gray-500 text-lg">
+                No cooking classes available yet.
+              </Typography>
+              {isChef && (
+                <Typography className="text-gray-600">
+                  Be the first chef to create a cooking class!
+                </Typography>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-8 items-center justify-center mx-auto max-w-[970px]">
+              {classes.map(classItem => (
+                <ApiClassCard key={classItem.id} data={classItem} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Add Class Modal */}
@@ -79,36 +112,36 @@ const Classes = () => {
           visible={isModalVisible}
           onCancel={() => setIsModalVisible(false)}
           onSubmit={handleAddClass}
-          loading={isLoading}
+          loading={isCreatingClass}
         />
       </>
     </AppWrapper>
   );
 };
 
-export default Classes;
-
-const CLASS_DATA = [
-  {
-    id: '1',
-    title: 'Italian Risotto and Gelato',
-    price: 3000,
-    chef: 'Chef Maria',
-    description:
-      'Learn to create Italian Risotto and Gelato from scratch with Chef Maria live from Rome.',
+// Component to transform API data to ClassCard format
+const ApiClassCard = ({ data }: { data: any }) => {
+  const transformedData = {
+    id: data.id.toString(),
+    title: data.title,
+    price: data.price,
+    chef: data.full_name,
+    description: data.description,
     image:
+      data.image ||
       'https://images.pexels.com/photos/15076692/pexels-photo-15076692/free-photo-of-burger.jpeg',
-  },
-  {
-    id: '2',
-    title: 'French Pizza',
-    price: 1200,
-    chef: 'Chef Raj',
-    description:
-      'Master the art of French-Style Pizza making with Chef Raj. Authentic and delicious!',
-    image:
-      'https://images.pexels.com/photos/2232/vegetables-italian-pizza-restaurant.jpg',
-  },
-];
+    duration: data.duration,
+    class_date: data.class_date,
+    class_time: data.class_time,
+    max_students: data.max_students,
+    difficulty: data.difficulty,
+    live_link: data.live_link,
+    payment_done: data.payment_done,
+    stars: data.stars || 0,
+    review_count: data.review_count || 0,
+  };
 
-export type ClassData = (typeof CLASS_DATA)[0];
+  return <ClassCard data={transformedData} />;
+};
+
+export default Classes;
