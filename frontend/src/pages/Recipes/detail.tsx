@@ -1,32 +1,61 @@
 // frontend/src/pages/Recipes/detail.tsx
 import { useState } from 'react';
-import { Rate, Typography, Tag, Divider, notification } from 'antd';
+import {
+  Rate,
+  Typography,
+  Tag,
+  Divider,
+  notification,
+  Popconfirm,
+  Button,
+} from 'antd';
 import {
   ClockCircleOutlined,
   UserOutlined,
   TagOutlined,
   HeartOutlined,
   HeartFilled,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { AppWrapper } from '../../components/layouts';
 import { BookmarkIcon, UserIcon } from '../../assets';
 import TextArea from 'antd/es/input/TextArea';
-import { ReviewCard } from '../../components/recipes';
 import { PlusCircleOutlined } from '@ant-design/icons';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../../redux/hook';
 import {
   useGetChefRecipeDetailQuery,
   useRateChefRecipeMutation,
   useAddChefRecipeCommentMutation,
+  useDeleteChefRecipeMutation,
 } from '../../redux/services/chefRecipeApi';
+
+// Simplified ReviewCard component without interactive elements
+const SimpleReviewCard = ({ data }: { data: any }) => {
+  const { review, userName } = data;
+
+  return (
+    <div className="flex flex-col pt-8 pb-4 px-8 gap-4 border-b border-b-[#A6A3A3]">
+      <div className="flex gap-1 items-center">
+        <img src={UserIcon} alt="user" className="w-6 h-6 object-contain" />
+        <Typography className="!text-base">{userName}</Typography>
+      </div>
+      <Typography className="!text-base">{review}</Typography>
+    </div>
+  );
+};
 
 const RecipeDetail = () => {
   const { recipeId } = useParams<{ recipeId: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isNoteInputVisible, setNoteInputVisible] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [reviewText, setReviewText] = useState('');
   const [userRating, setUserRating] = useState(0);
+
+  // Get current user from Redux store
+  const { user } = useAppSelector(state => state.auth);
 
   // API calls
   const {
@@ -41,6 +70,8 @@ const RecipeDetail = () => {
   const [rateRecipe, { isLoading: isRating }] = useRateChefRecipeMutation();
   const [addComment, { isLoading: isAddingComment }] =
     useAddChefRecipeCommentMutation();
+  const [deleteRecipe, { isLoading: isDeletingRecipe }] =
+    useDeleteChefRecipeMutation();
 
   if (isLoading) {
     return (
@@ -94,6 +125,27 @@ const RecipeDetail = () => {
     }
   };
 
+  const handleDeleteRecipe = async () => {
+    try {
+      await deleteRecipe(Number(recipeId)).unwrap();
+      notification.success({
+        message: 'Recipe deleted successfully!',
+        description: 'The recipe has been permanently removed.',
+      });
+      // Navigate back to recipes page after successful deletion
+      navigate('/chefs');
+    } catch (error: any) {
+      console.error('Error deleting recipe:', error);
+      notification.error({
+        message: 'Failed to delete recipe',
+        description: error?.data?.message || 'Please try again later.',
+      });
+    }
+  };
+
+  // Check if current user is the owner of the recipe
+  const isRecipeOwner = recipeData && user && recipeData.user_id === user.id;
+
   const saveNote = () => {
     // Here you would save the note to your backend or local storage
     console.log('Saving note:', noteText);
@@ -116,9 +168,35 @@ const RecipeDetail = () => {
           {/* Header Section */}
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <Typography className="!text-3xl !font-bold mb-2">
-                {recipeData.name}
-              </Typography>
+              <div className="flex justify-between items-start mb-2">
+                <Typography className="!text-3xl !font-bold">
+                  {recipeData.name}
+                </Typography>
+
+                {/* Delete Button - Only show if user owns the recipe */}
+                {isRecipeOwner && (
+                  <Popconfirm
+                    title="Delete Recipe"
+                    description="Are you sure you want to delete this recipe? This action cannot be undone."
+                    onConfirm={handleDeleteRecipe}
+                    okText="Yes, Delete"
+                    cancelText="Cancel"
+                    okButtonProps={{
+                      danger: true,
+                      loading: isDeletingRecipe,
+                    }}
+                    placement="bottomRight">
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={isDeletingRecipe}
+                      className="!text-red-500 hover:!text-red-700 hover:!border-red-500">
+                      {isDeletingRecipe ? 'Deleting...' : 'Delete Recipe'}
+                    </Button>
+                  </Popconfirm>
+                )}
+              </div>
+
               <Typography className="!text-base text-gray-600 mb-4">
                 by {recipeData.full_name}
               </Typography>
@@ -297,7 +375,7 @@ const RecipeDetail = () => {
           </div>
         </div>
 
-        {/* Reviews Section */}
+        {/* Simplified Reviews Section */}
         <div className="px-8 pt-8 pb-4 flex flex-col border-b border-b-[#A6A3A3]">
           <Typography className="!text-2xl !font-semibold mb-4">
             Reviews & Comments
@@ -312,12 +390,7 @@ const RecipeDetail = () => {
                 value={reviewText}
                 onChange={e => setReviewText(e.target.value)}
               />
-              <div className="flex justify-between items-center">
-                <Rate
-                  value={userRating}
-                  onChange={setUserRating}
-                  className="text-sm"
-                />
+              <div className="flex justify-end items-center">
                 <button
                   className="bg-[#DC3545] text-white px-4 py-1 rounded cursor-pointer hover:bg-[#c82333] transition-colors"
                   onClick={handleAddReview}
@@ -331,10 +404,11 @@ const RecipeDetail = () => {
           </div>
         </div>
 
+        {/* Simplified Comments Display */}
         <div className="">
           {recipeData.comments && recipeData.comments.length > 0 ? (
             recipeData.comments.map(comment => (
-              <ReviewCard
+              <SimpleReviewCard
                 key={comment.id}
                 data={{
                   id: comment.id.toString(),

@@ -1,4 +1,4 @@
-// frontend/src/components/recipes/AddRecipeModal.tsx
+// frontend/src/components/recipes/AddRecipeModal.tsx - Updated with working image upload
 import React, { useState } from 'react';
 import {
   Modal,
@@ -14,6 +14,7 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd';
 import { useCreateChefRecipeMutation } from '../../redux/services/chefRecipeApi';
+import { useAppSelector } from '../../redux/hook';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -51,15 +52,72 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [directions, setDirections] = useState<Direction[]>([
     { id: '1', step: '' },
   ]);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Get auth token from Redux store
+  const { accessToken } = useAppSelector(state => state.auth);
 
   const [createChefRecipe, { isLoading: isCreatingRecipe }] =
     useCreateChefRecipeMutation();
   const loading = propLoading || isCreatingRecipe;
 
-  const handleUploadChange: UploadProps['onChange'] = ({
-    fileList: newFileList,
-  }) => {
-    setFileList(newFileList);
+  //
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        notification.error({ message: 'You can only upload image files!' });
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        notification.error({ message: 'Image must be smaller than 5MB!' });
+        return;
+      }
+      // if (selectedImage) {
+      //   formData.append('image', selectedImage);
+      // }
+
+      setSelectedImage(file);
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = e => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    // Clear the file input
+    const fileInput = document.getElementById(
+      'recipe-image-input',
+    ) as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  const handlePreview = async (file: UploadFile) => {
+    if (!file.url && !file.preview) {
+      if (file.originFileObj) {
+        file.preview = URL.createObjectURL(file.originFileObj);
+      }
+    }
+  };
+
+  const handleRemove = (file: UploadFile) => {
+    // Clean up the preview URL when file is removed
+    if (file.preview) {
+      URL.revokeObjectURL(file.preview);
+    }
   };
 
   const uploadButton = (
@@ -140,41 +198,98 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         return;
       }
 
-      const recipeData = {
-        name: formValues.recipeName,
-        type: formValues.recipeType,
-        cost: formValues.recipeType === 'premium' ? formValues.cost || 0 : 0,
-        description: formValues.description,
-        cooking_time: parseInt(formValues.cookingTime),
-        difficulty: formValues.difficulty,
-        tags: formValues.tags || [],
-        ingredients: validIngredients.map(ing => ({
-          name: ing.name,
-          quantity: ing.quantity,
-        })),
-        directions: validDirections.map(dir => dir.step),
-      };
+      // Create FormData for file upload
+      const formData = new FormData();
 
-      await createChefRecipe(recipeData).unwrap();
+      // Add basic recipe data
+      formData.append('name', formValues.recipeName);
+      formData.append('type', formValues.recipeType);
+      if (formValues.recipeType === 'premium' && formValues.cost) {
+        formData.append('cost', formValues.cost.toString());
+      }
+      formData.append('description', formValues.description);
+      formData.append('cooking_time', formValues.cookingTime.toString());
+      formData.append('difficulty', formValues.difficulty);
+
+      // Add arrays as JSON strings
+      formData.append(
+        'ingredients',
+        JSON.stringify(
+          validIngredients.map(ing => ({
+            name: ing.name,
+            quantity: ing.quantity,
+          })),
+        ),
+      );
+      formData.append(
+        'directions',
+        JSON.stringify(validDirections.map(dir => dir.step)),
+      );
+      if (selectedImage) {
+        formData.append('image', selectedImage);
+      }
+      if (formValues.tags && formValues.tags.length > 0) {
+        formData.append('tags', JSON.stringify(formValues.tags));
+      }
+
+      // Add image file if present
+      if (fileList.length > 0 && fileList[0].originFileObj) {
+        formData.append('image', fileList[0].originFileObj);
+      }
+
+      // Create recipe using FormData
+      await createRecipeWithFormData(formData);
+
       notification.success({
         message: 'Recipe Added Successfully!',
-        description: `${recipeData.name} has been added to your recipes.`,
+        description: `${formValues.recipeName} has been added to your recipes.`,
       });
 
       handleCancel();
-      if (onSubmit) onSubmit(); // Call parent callback to refetch data
+      if (onSubmit) onSubmit();
     } catch (error: any) {
       console.error('Recipe creation failed:', error);
       notification.error({
         message: 'Error Adding Recipe',
-        description: error?.data?.message || 'Please try again later.',
+        description: error?.message || 'Please try again later.',
       });
     }
   };
 
+  // Custom function to handle FormData submission
+  const createRecipeWithFormData = async (formData: FormData) => {
+    console.log(
+      'Using token:',
+      accessToken ? 'Token present' : 'No token found',
+    );
+
+    if (!accessToken) {
+      throw new Error('Authentication token not found. Please log in again.');
+    }
+
+    const response = await fetch('http://localhost:8080/api/recipes', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      throw new Error(errorData.message || 'Failed to create recipe');
+    }
+
+    return response.json();
+  };
+
   const handleCancel = () => {
     form.resetFields();
-    setFileList([]);
+    setSelectedImage(null);
+    setImagePreview(null);
     setIngredients([{ id: '1', name: '', quantity: '' }]);
     setDirections([{ id: '1', step: '' }]);
     onCancel();
@@ -204,17 +319,50 @@ const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       ]}>
       <Form form={form} layout="vertical" requiredMark={false}>
         {/* Recipe Image */}
-        <Form.Item
-          label={<Text strong>Recipe Image (Optional)</Text>}
-          name="image">
-          <Upload
-            listType="picture-card"
-            fileList={fileList}
-            onChange={handleUploadChange}
-            beforeUpload={() => false} // Prevent auto upload
-            maxCount={1}>
-            {fileList.length >= 1 ? null : uploadButton}
-          </Upload>
+        <Form.Item label={<Text strong>Recipe Image (Optional)</Text>}>
+          <div className="flex flex-col gap-4">
+            {!imagePreview ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <input
+                  id="recipe-image-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  style={{ display: 'none' }}
+                />
+                <Button
+                  type="dashed"
+                  icon={<PlusOutlined />}
+                  onClick={() =>
+                    document.getElementById('recipe-image-input')?.click()
+                  }
+                  size="large">
+                  Upload Recipe Image
+                </Button>
+                <div className="mt-2 text-gray-500 text-sm">
+                  Max size: 5MB, Formats: JPG, PNG, GIF
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="w-full h-48 border rounded-lg overflow-hidden">
+                  <img
+                    src={imagePreview}
+                    alt="Recipe preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <Button
+                  type="primary"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2">
+                  Remove
+                </Button>
+              </div>
+            )}
+          </div>
         </Form.Item>
 
         {/* Recipe Name */}
