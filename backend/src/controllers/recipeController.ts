@@ -1,4 +1,3 @@
-// backend/src/controllers/recipeController.ts
 import { Request, Response } from "express";
 import pool from "../config/db";
 
@@ -145,13 +144,11 @@ export const updateRecipe = async (req: Request, res: Response) => {
 // delete recipe
 export const deleteRecipe = async (req: Request, res: Response) => {
   const user = (req as any).user;
-
   const recipeId = parseInt(req.params.id);
 
   try {
     const recipeRes = await pool.query(
       `SELECT * FROM recipes WHERE id = $1 AND user_id = $2`,
-
       [recipeId, user.id]
     );
 
@@ -162,47 +159,37 @@ export const deleteRecipe = async (req: Request, res: Response) => {
     }
 
     // Delete dependent records in order
-
     await pool.query(
       `DELETE FROM recipe_comment_likes WHERE comment_id IN (
- 
-        SELECT id FROM recipe_comments WHERE recipe_id = $1
- 
-      )`,
+      SELECT id FROM recipe_comments WHERE recipe_id = $1
+    )`,
       [recipeId]
     );
 
     await pool.query(
       `DELETE FROM recipe_comment_replies WHERE comment_id IN (
- 
-        SELECT id FROM recipe_comments WHERE recipe_id = $1
- 
-      )`,
+      SELECT id FROM recipe_comments WHERE recipe_id = $1
+    )`,
       [recipeId]
     );
 
     await pool.query(`DELETE FROM recipe_comments WHERE recipe_id = $1`, [
       recipeId,
     ]);
-
     await pool.query(`DELETE FROM recipe_ratings WHERE recipe_id = $1`, [
       recipeId,
     ]);
-
     await pool.query(`DELETE FROM ingredients WHERE recipe_id = $1`, [
       recipeId,
     ]);
-
     await pool.query(`DELETE FROM directions WHERE recipe_id = $1`, [recipeId]);
 
     // Finally delete the recipe
-
     await pool.query(`DELETE FROM recipes WHERE id = $1`, [recipeId]);
 
     res.status(200).json({ message: "Recipe deleted successfully" });
   } catch (err) {
     console.error("deleteRecipe error:", err);
-
     res.status(500).json({ message: "Failed to delete recipe" });
   }
 };
