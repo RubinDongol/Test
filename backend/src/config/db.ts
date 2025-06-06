@@ -380,6 +380,44 @@ export const connectDB = async (): Promise<void> => {
         ) r), '[]'::json) AS premium_recipes;
     `);
     console.log("Recipe overview view ready");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cooking_classes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        price NUMERIC DEFAULT 0,
+        duration INTEGER, -- in minutes
+        class_date DATE,
+        class_time TIME,
+        max_students INTEGER,
+        difficulty VARCHAR(10) CHECK (difficulty IN ('easy', 'medium', 'hard')),
+        learn TEXT[],
+        requirements TEXT[],
+        category TEXT,
+        tags TEXT[],
+        chef_notes TEXT,
+        course_fee NUMERIC,
+        image TEXT,
+        live_link TEXT,
+        payment_done BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("Cooking Classes table ready");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cooking_class_reviews (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        class_id INTEGER REFERENCES cooking_classes(id) ON DELETE CASCADE,
+        rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, class_id)
+      );
+    `);
+    console.log("Cooking Class Reviews table ready");
 
     client.release();
   } catch (error) {

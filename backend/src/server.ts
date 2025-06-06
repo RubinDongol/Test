@@ -15,6 +15,7 @@ import userRoutes from "./routes/user";
 import recipeRoutes from "./routes/recipe";
 import savedRecipeRoutes from "./routes/saveRecipe";
 import notificationRoutes from "./routes/notification";
+import cookingClassRoutes from "./routes/cookingClass";
 
 // DB
 import { connectDB } from "./config/db";
@@ -52,6 +53,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/recipes", recipeRoutes);
 app.use("/api/saved-recipes", savedRecipeRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/cooking-classes", cookingClassRoutes);
 
 // Test Route
 app.get("/", (req: Request, res: Response) => {
