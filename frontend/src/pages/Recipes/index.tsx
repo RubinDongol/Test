@@ -30,7 +30,7 @@ const Recipes = () => {
           <RecipeTypeSection type="appetizer" title="Appetizers" />
 
           {/* Chinese Cuisine Section */}
-          <CuisineSection cuisine="chinese" title="Chinese Cuisine" />
+          {/* <CuisineSection cuisine="chinese" title="Chinese Cuisine" /> */}
 
           {/* Indian Cuisine Section */}
           {/* <CuisineSection cuisine="indian" title="Indian Cuisine" /> */}

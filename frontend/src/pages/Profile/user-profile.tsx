@@ -86,9 +86,9 @@ const UserProfile = () => {
                 <Typography className="!text-2xl">
                   {profileData.full_name}
                 </Typography>
-                <Typography className="!text-base !text-[#D63D00]">
+                {/* <Typography className="!text-base !text-[#D63D00]">
                   {Math.round(Math.random() * Math.random() * 102)} followers
-                </Typography>
+                </Typography> */}
                 <Typography className="!text-base text-gray-600">
                   {profileData.posts?.length || 0} posts
                 </Typography>
@@ -320,8 +320,8 @@ const UserProfilePostCard = ({
           onClick={() =>
             notification.success({ message: 'Post has been reported' })
           }>
-          <Typography className="!text-base text-[#807F7F]">Report</Typography>
-          <img src={FlagIcon} alt="flag" className="w-5 h-5 object-contain" />
+          {/* <Typography className="!text-base text-[#807F7F]">Report</Typography> */}
+          {/* <img src={FlagIcon} alt="flag" className="w-5 h-5 object-contain" /> */}
         </button>
       </div>
 

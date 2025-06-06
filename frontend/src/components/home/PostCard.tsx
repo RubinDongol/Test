@@ -213,7 +213,7 @@ const PostCard = ({
           )}
         </div>
 
-        {!hideReportBtn && (
+        {/* {!hideReportBtn && (
           <button
             className="flex justify-between items-center gap-2 cursor-pointer"
             onClick={() =>
@@ -224,7 +224,7 @@ const PostCard = ({
             </Typography>
             <img src={FlagIcon} alt="flag" className="w-5 h-5 object-contain" />
           </button>
-        )}
+        )} */}
       </div>
 
       {/* Comments Modal */}
