@@ -1,6 +1,6 @@
 import { Input, Typography } from 'antd';
 import { Link, useLocation } from 'react-router-dom';
-import { SearchOutlined } from '@ant-design/icons';
+// import { SearchOutlined } from '@ant-design/icons';
 import { LogoIcon } from '../../assets';
 import { AnnouncementPopover, ProfilePopover } from '../header';
 
@@ -18,11 +18,11 @@ const AppWrapper = ({ children }: { children: React.ReactElement }) => {
               src={LogoIcon}
               className="transform transition-transform duration-200 ease-out hover:scale-[1.06] object-contain"
             />
-            <Input
+            {/* <Input
               placeholder="Search"
               prefix={<SearchOutlined className="!text-[#3C3C4399]" />}
               className="!border-none min-w-[180px] xl:!w-[375px] h-9"
-            />
+            /> */}
           </div>
           <div className="flex  gap-4 items-center">
             {NAVLINKS.map(item => {
