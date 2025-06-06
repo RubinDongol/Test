@@ -42,3 +42,24 @@ export const unfollowUser = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to unfollow user" });
   }
 };
+
+// @desc Get all users (for recommended profiles)
+// Add this function to your existing backend/src/controllers/userController.ts file
+
+// @desc Get all users (for recommended profiles)
+export const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, email, photo, bio, created_at, role_id
+       FROM users 
+       WHERE is_verified = TRUE 
+       ORDER BY created_at DESC
+       LIMIT 50`
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("getAllUsers error:", err);
+    res.status(500).json({ message: "Failed to fetch users" });
+  }
+};
