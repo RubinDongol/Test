@@ -29,6 +29,7 @@ import {
   useAddChefRecipeCommentMutation,
   useDeleteChefRecipeMutation,
 } from '../../redux/services/chefRecipeApi';
+import { getImageUrl } from '../../utils/imageUtils'; // Import the utility
 
 // Simplified ReviewCard component without interactive elements
 const SimpleReviewCard = ({ data }: { data: any }) => {
@@ -246,12 +247,15 @@ const RecipeDetail = () => {
             <div className="space-y-4">
               <div className="w-[402px] h-[300px] rounded-[14px] bg-black shrink-0 overflow-hidden">
                 <img
-                  src={
-                    recipeData.image ||
-                    'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg'
-                  }
+                  src={getImageUrl(recipeData.image)} // Use the utility function
                   className="w-full h-full object-cover rounded-[14px] hover:shadow-lg transition-shadow"
                   alt="recipe"
+                  onError={e => {
+                    // Fallback if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.src =
+                      'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg';
+                  }}
                 />
               </div>
               <div className="flex gap-2 justify-between items-center">

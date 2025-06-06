@@ -1,4 +1,4 @@
-// frontend/src/components/recipes/RecipeCard.tsx
+// frontend/src/components/recipes/RecipeCard.tsx - Final clean version
 import { Rate, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,12 +22,27 @@ const RecipeCard = ({ needsSubscription, data }: RecipeCardProps) => {
   const navigate = useNavigate();
   const { id, imageUrl, recipeName, reviews, rating, chef } = data;
 
+  // Function to construct image URL
+  const getImageUrl = (imagePath: string | null): string => {
+    if (!imagePath) {
+      return 'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg';
+    }
+
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+
+    const cleanPath = imagePath.startsWith('/')
+      ? imagePath.substring(1)
+      : imagePath;
+    return `http://localhost:8080/${cleanPath}`;
+  };
+
   const handleCardClick = () => {
-    // Navigate to recipe detail page with the recipe ID
     navigate(`/recipe-detail/${id}`, {
       state: {
         recipeId: id,
-        fallbackData: data, // Keep fallback data in case needed
+        fallbackData: data,
       },
     });
   };
@@ -36,14 +51,21 @@ const RecipeCard = ({ needsSubscription, data }: RecipeCardProps) => {
     <div
       className="flex flex-col gap-2 cursor-pointer transition-transform hover:scale-105"
       onClick={handleCardClick}>
-      <div className="w-[258px] h-[140px] rounded-[14px] bg-black">
+      <div className="w-[258px] h-[140px] rounded-[14px] bg-black overflow-hidden">
         <img
-          src={imageUrl}
+          src={getImageUrl(imageUrl)}
           className="w-full h-full object-cover rounded-[14px]"
           alt="food-item"
           loading="lazy"
+          onError={e => {
+            // Fallback if image fails to load
+            const target = e.target as HTMLImageElement;
+            target.src =
+              'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg';
+          }}
         />
       </div>
+
       <Typography className="!text-base font-medium">{recipeName}</Typography>
       {chef && (
         <Typography className="!text-sm text-gray-600">by {chef}</Typography>

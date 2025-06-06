@@ -1,7 +1,7 @@
-// frontend/src/pages/Chefs/index.tsx
-import { Typography, Button, notification } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { useState } from 'react';
+// frontend/src/pages/Chefs/index.tsx - Simplified with compact header
+import { Typography, Button, Input } from 'antd';
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { useState, useMemo } from 'react';
 import { AppWrapper } from '../../components/layouts';
 import { RecipeCard } from '../../components/recipes';
 import { ChefCard } from '../../components/chefs';
@@ -9,8 +9,11 @@ import { useAppSelector } from '../../redux/hook';
 import AddRecipeModal from '../../components/recipes/AddRecipeModal';
 import { useGetAllChefRecipesQuery } from '../../redux/services/chefRecipeApi';
 
+const { Search } = Input;
+
 const Chefs = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { user } = useAppSelector(state => state.auth);
   const {
@@ -20,19 +23,63 @@ const Chefs = () => {
     refetch,
   } = useGetAllChefRecipesQuery();
 
-  // Check if user is a chef (role_id 3 = chef)
   const isChef = user.role_id === 3;
 
   const handleAddRecipeSuccess = () => {
     setIsModalVisible(false);
-    refetch(); // Refetch recipes after successful creation
+    refetch();
   };
+
+  // Simple search logic
+  const { filteredFreeRecipes, filteredPremiumRecipes } = useMemo(() => {
+    if (!recipesData) {
+      return {
+        filteredFreeRecipes: [],
+        filteredPremiumRecipes: [],
+      };
+    }
+
+    const freeRecipes = recipesData.free_recipes || [];
+    const premiumRecipes = recipesData.premium_recipes || [];
+
+    const filterRecipes = (recipes: any[]) => {
+      if (!recipes || recipes.length === 0) return [];
+
+      if (!searchTerm.trim()) return recipes; // Show all if no search term
+
+      const search = searchTerm.toLowerCase().trim();
+      return recipes.filter(recipe => {
+        if (!recipe) return false;
+
+        return (
+          (recipe.name && recipe.name.toLowerCase().includes(search)) ||
+          (recipe.description &&
+            recipe.description.toLowerCase().includes(search)) ||
+          (recipe.full_name && recipe.full_name.toLowerCase().includes(search))
+        );
+      });
+    };
+
+    return {
+      filteredFreeRecipes: filterRecipes(freeRecipes),
+      filteredPremiumRecipes: filterRecipes(premiumRecipes),
+    };
+  }, [recipesData, searchTerm]);
+
+  const totalResults =
+    filteredFreeRecipes.length + filteredPremiumRecipes.length;
+  const hasSearch = searchTerm.trim().length > 0;
 
   if (isLoading) {
     return (
       <AppWrapper>
         <div className="h-full flex justify-center items-center">
-          <Typography>Loading recipes...</Typography>
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-[#DC3545] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <Typography className="!text-lg text-gray-600">
+              Loading delicious recipes...
+            </Typography>
+          </div>
         </div>
       </AppWrapper>
     );
@@ -42,91 +89,176 @@ const Chefs = () => {
     return (
       <AppWrapper>
         <div className="h-full flex justify-center items-center">
-          <Typography className="text-red-500">
-            Error loading recipes. Please try again.
-          </Typography>
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">🍳</div>
+            <Typography className="!text-xl text-red-500 mb-2">
+              Oops! Something went wrong
+            </Typography>
+            <Typography className="text-gray-600">
+              We couldn't load the recipes. Please try again later.
+            </Typography>
+          </div>
         </div>
       </AppWrapper>
     );
   }
 
-  const chefs = recipesData?.chefs || CHEF_DATA; // Fallback to mock data
-  const freeRecipes = recipesData?.free_recipes || [];
-  const premiumRecipes = recipesData?.premium_recipes || [];
-
   return (
     <AppWrapper>
       <>
-        <div className="h-full flex flex-col border border-black bg-white">
-          <div className="flex flex-col pt-8 px-8 gap-8">
-            <div className="flex justify-between items-center">
-              <Typography className="!text-[32px]">
-                Chefs & Their Recipes
-              </Typography>
+        <div className="h-full flex flex-col bg-white border border-black">
+          {/* Compact Header Section */}
+          <div className="bg-[#DC3545] text-white px-8 py-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <Typography className="!text-2xl !font-bold !text-white mb-2">
+                  Chefs & Their Recipes
+                </Typography>
+                <Typography className="!text-base !text-white/90">
+                  Discover amazing recipes from talented chefs
+                </Typography>
+              </div>
               {isChef && (
                 <Button
                   type="primary"
-                  icon={<PlusOutlined />}
                   size="large"
+                  icon={<PlusOutlined />}
                   onClick={() => setIsModalVisible(true)}
-                  className="!bg-[#DC3545] !border-[#DC3545] hover:!bg-[#c82333] hover:!border-[#c82333]">
+                  className="!bg-white !text-[#DC3545] !border-white hover:!bg-gray-100 !font-medium shadow-sm">
                   Add Recipe
                 </Button>
               )}
             </div>
+
+            {/* Compact Search Bar */}
+            <div className="max-w-md">
+              <Search
+                placeholder="Search recipes, chefs, or ingredients..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                prefix={<SearchOutlined className="text-gray-400" />}
+                size="large"
+                allowClear
+                className="search-input-custom"
+              />
+              {hasSearch && (
+                <Typography className="!text-white/80 !text-sm mt-2">
+                  {totalResults === 0
+                    ? `No recipes found for "${searchTerm}"`
+                    : `${totalResults} recipe${totalResults !== 1 ? 's' : ''} found`}
+                </Typography>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-scroll pb-8">
-            <div className="flex flex-col pt-8 px-8 gap-8">
-              <Typography className="!text-2xl">Featured Chefs</Typography>
-              <div className="overflow-x-scroll flex gap-8 self-center">
-                {chefs.map(item => {
-                  return <ChefCard key={item.id} data={item} />;
-                })}
-              </div>
-            </div>
+          <div className="flex-1 overflow-y-scroll">
+            {/* Free Recipes Section */}
+            {filteredFreeRecipes.length > 0 && (
+              <section className="px-8 py-8">
+                <div className="flex items-center justify-between mb-6">
+                  <Typography className="!text-2xl !font-bold !text-gray-800">
+                    Free Recipes
+                  </Typography>
+                  <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {filteredFreeRecipes.length} recipe
+                    {filteredFreeRecipes.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
 
-            <div className="flex flex-col pt-8 px-8 gap-8">
-              <Typography className="!text-2xl">Free Recipes</Typography>
-              {freeRecipes.length === 0 ? (
-                <div className="flex justify-center items-center p-8">
-                  <Typography>No free recipes available</Typography>
-                </div>
-              ) : (
                 <div className="overflow-x-scroll flex gap-8">
-                  {freeRecipes.map(item => {
-                    return (
-                      <ApiRecipeCard
-                        key={item.id}
-                        data={item}
-                        needsSubscription={false}
-                      />
-                    );
-                  })}
+                  {filteredFreeRecipes.map(item => (
+                    <div
+                      key={item.id}
+                      className="transform transition-all duration-200 hover:scale-105">
+                      <ApiRecipeCard data={item} needsSubscription={false} />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </section>
+            )}
 
-            <div className="flex flex-col pt-8 px-8 gap-8">
-              <Typography className="!text-2xl">Premium Recipes</Typography>
-              {premiumRecipes.length === 0 ? (
-                <div className="flex justify-center items-center p-8">
-                  <Typography>No premium recipes available</Typography>
+            {/* Premium Recipes Section */}
+            {filteredPremiumRecipes.length > 0 && (
+              <section className="px-8 py-8 bg-gray-50">
+                <div className="flex items-center justify-between mb-6">
+                  <Typography className="!text-2xl !font-bold !text-gray-800">
+                    Premium Recipes
+                  </Typography>
+                  <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {filteredPremiumRecipes.length} recipe
+                    {filteredPremiumRecipes.length !== 1 ? 's' : ''}
+                  </div>
                 </div>
-              ) : (
+
                 <div className="overflow-x-scroll flex gap-8">
-                  {premiumRecipes.map(item => {
-                    return (
-                      <ApiRecipeCard
-                        key={item.id}
-                        data={item}
-                        needsSubscription={true}
-                      />
-                    );
-                  })}
+                  {filteredPremiumRecipes.map(item => (
+                    <div
+                      key={item.id}
+                      className="transform transition-all duration-200 hover:scale-105">
+                      <ApiRecipeCard data={item} needsSubscription={true} />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </section>
+            )}
+
+            {/* No Results State */}
+            {hasSearch && totalResults === 0 && (
+              <section className="px-8 py-16">
+                <div className="max-w-md mx-auto text-center">
+                  <div className="text-6xl mb-4">🔍</div>
+                  <Typography className="!text-xl !font-bold !text-gray-800 mb-2">
+                    No recipes found
+                  </Typography>
+                  <Typography className="!text-gray-600 mb-6">
+                    We couldn't find any recipes matching{' '}
+                    <span className="font-medium">"{searchTerm}"</span>
+                  </Typography>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <Typography className="!text-blue-800 !font-medium mb-2 !text-sm">
+                      Try searching for:
+                    </Typography>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {['burger', 'pasta', 'dessert', 'quick meals'].map(
+                        suggestion => (
+                          <button
+                            key={suggestion}
+                            onClick={() => setSearchTerm(suggestion)}
+                            className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs hover:bg-blue-200 transition-colors">
+                            {suggestion}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Empty State - No recipes at all */}
+            {!hasSearch && totalResults === 0 && (
+              <section className="px-8 py-16">
+                <div className="max-w-md mx-auto text-center">
+                  <div className="text-6xl mb-4">🍳</div>
+                  <Typography className="!text-xl !font-bold !text-gray-800 mb-2">
+                    No recipes yet
+                  </Typography>
+                  <Typography className="!text-gray-600 mb-6">
+                    Be the first chef to share your amazing recipes!
+                  </Typography>
+                  {isChef && (
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<PlusOutlined />}
+                      onClick={() => setIsModalVisible(true)}
+                      className="!bg-[#DC3545] !border-[#DC3545] !font-medium">
+                      Add Your First Recipe
+                    </Button>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
@@ -136,6 +268,27 @@ const Chefs = () => {
           onCancel={() => setIsModalVisible(false)}
           onSubmit={handleAddRecipeSuccess}
         />
+
+        {/* Custom CSS for search input */}
+        <style jsx>{`
+          .search-input-custom .ant-input-affix-wrapper {
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            backdrop-filter: blur(10px) !important;
+          }
+          .search-input-custom .ant-input-affix-wrapper:focus,
+          .search-input-custom .ant-input-affix-wrapper:hover {
+            border-color: white !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+          }
+          .search-input-custom .ant-input {
+            background: transparent !important;
+            color: white !important;
+          }
+          .search-input-custom .ant-input::placeholder {
+            color: rgba(255, 255, 255, 0.7) !important;
+          }
+        `}</style>
       </>
     </AppWrapper>
   );
@@ -149,14 +302,11 @@ const ApiRecipeCard = ({
   data: any;
   needsSubscription: boolean;
 }) => {
-  // Transform API data to match RecipeCard expected format
   const transformedData = {
-    id: data.id, // Keep as number for API calls
+    id: data.id,
     recipeName: data.name,
     reviews: data.review_count,
-    imageUrl:
-      data.image ||
-      'https://images.pexels.com/photos/28978147/pexels-photo-28978147.jpeg',
+    imageUrl: data.image,
     rating: data.stars || 0,
     chef: data.full_name,
     description: data.description,
